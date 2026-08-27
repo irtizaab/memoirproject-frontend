@@ -21,6 +21,28 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(10_000),
+
+  /**
+   * Supabase project URL, e.g. https://abcdefgh.supabase.co
+   *
+   * The browser talks to Supabase Auth directly for signup and login; the
+   * FastAPI backend only ever *verifies* the resulting token. That split is
+   * why this belongs here rather than behind the API.
+   */
+  NEXT_PUBLIC_SUPABASE_URL: z
+    .url("must be a valid URL, e.g. https://abcdefgh.supabase.co")
+    .transform((url) => url.replace(/\/+$/, "")),
+
+  /**
+   * Supabase anon (publishable) key.
+   *
+   * Public by design — it identifies the project, it does not grant access.
+   * Every Supabase frontend ships it in the bundle. The keys that *do* grant
+   * access (service role, database password) live only on the backend.
+   */
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z
+    .string()
+    .min(1, "is required — Supabase → Project Settings → API"),
 });
 
 /**
@@ -34,6 +56,8 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse({
   NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
   NEXT_PUBLIC_API_TIMEOUT_MS: process.env.NEXT_PUBLIC_API_TIMEOUT_MS,
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 });
 
 if (!parsed.success) {

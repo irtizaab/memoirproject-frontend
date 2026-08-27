@@ -12,8 +12,21 @@ A page with a `fetch` call, a URL, or business logic in it belongs in `src/featu
 | `layout.tsx` | Root layout. A server component — keep it that way. |
 | `providers.tsx` | The single `"use client"` boundary at the root: query client + devtools. |
 | `error.tsx` | Route-level error boundary. Catches server-path failures. |
-| `page.tsx` | Landing page. |
+| `page.tsx` | `/` — redirects to `/archive`. There is no landing page yet. |
+| `(app)/layout.tsx` | Chrome for every signed-in screen: header, centred column, footer, session guard. |
 | `<route>/page.tsx` | One folder per route. See `example/`. |
+
+## Route groups
+
+`(app)` is a **route group** — parenthesised, so it adds a layout without adding a URL segment.
+`src/app/(app)/archive/page.tsx` serves `/archive`, not `/app/archive`.
+
+Two routes sit outside it on purpose:
+
+| Route | Why it has no app chrome |
+| --- | --- |
+| `/onboarding` | Reached before an account exists, so there is nowhere to navigate to. |
+| `/j/[token]` | A contributor. They have no account and never will, so the signed-in nav would be a set of dead ends. |
 
 ## Server and client components
 

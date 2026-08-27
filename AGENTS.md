@@ -18,11 +18,20 @@ update it when you change what that directory holds. The short version:
 - **Only `src/lib/api/client.ts` calls `fetch`.** Everything else goes through `apiRequest`.
 - Never deep-import another feature's internals — use its `index.ts` or `server.ts`.
 - `src/components/ui/` holds shadcn primitives with no domain knowledge. Feature-aware components
-  live in the feature folder.
+  live in the feature folder. `src/components/layout/` holds the app shell used by `app/(app)/`.
+- **The theme lives in `src/app/globals.css` and nowhere else.** Paper, ink, seal red, the hairline
+  rule colour, the two typefaces, and the 4px radius are declared there once, under both the memoir
+  names (`--paper`, `--seal`) and the shadcn names (`--background`, `--primary`) that the primitives
+  consume. Never hard-code a hex value in a component or re-declare the palette in a CSS module —
+  `features/onboarding/onboarding.module.css` used to, and the two halves of the product drifted
+  apart until it stopped. There is no dark mode, deliberately.
+- Buttons and labels are **sentence case**. The tracked-out uppercase is reserved for the eyebrow
+  above a page title (`.eyebrow`) and for quiet metadata (`.eyebrow-muted`), both defined in
+  `globals.css`.
 - `src/utils/` is pure generic functions, `src/hooks/` is generic React hooks, `src/lib/` is
-  infrastructure (dependencies, config, I/O). `utils/` and `hooks/` are empty by design — add a file
-  only when a second caller needs it. Data-fetching hooks belong in `features/<name>/hooks.ts`, never
-  in `src/hooks/`.
+  infrastructure (dependencies, config, I/O). Add a file to either only when a **second** caller
+  needs it — `utils/` is still empty on those grounds, and `hooks/` holds exactly one.
+  Data-fetching hooks belong in `features/<name>/hooks.ts`, never in `src/hooks/`.
 - Default to fetching on the server. Use TanStack Query only when data changes in response to the
   user (mutations, polling, refetch).
 - Every API response is validated by a Zod schema at the boundary. No unvalidated data enters the app.

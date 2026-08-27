@@ -17,6 +17,10 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_API_BASE_URL: "http://backend.test",
       NEXT_PUBLIC_API_TIMEOUT_MS: "1000",
+      // Fake project, for the same reason: `env.ts` validates at import time,
+      // and a real URL here would risk a test reaching Supabase for real.
+      NEXT_PUBLIC_SUPABASE_URL: "http://supabase.test",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key",
     },
     coverage: {
       provider: "v8",

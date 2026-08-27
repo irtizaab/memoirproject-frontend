@@ -1,22 +1,35 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+
 import { PEOPLE } from "@/features/onboarding/data";
+import { useMe } from "@/features/onboarding/hooks";
+import type { MemoirSummary } from "@/features/onboarding/schemas";
 import type { OnboardingState } from "@/features/onboarding/types";
 import { firstName, possessive } from "@/features/onboarding/utils";
 import { useTransientLabel } from "@/features/onboarding/useTransientLabel";
 
 import styles from "../onboarding.module.css";
 
-const INVITE_LINK = "memoirproject.co/j/k4m9-tqzr-81ha";
+/**
+ * A subscribe function for a value that never changes after the first render.
+ * `useSyncExternalStore` requires one, so this returns an unsubscribe that has
+ * nothing to undo. Declared at module scope so its identity is stable —
+ * defining it inline would resubscribe on every render.
+ */
+const subscribeToNothing = () => () => {};
 
 type DashboardStepProps = {
   state: OnboardingState;
+  /** The claimed memoir, or null after a reload — see `useMe()` below. */
+  memoir: MemoirSummary | null;
   onCollect: () => void;
   onOrganize: () => void;
 };
 
 export function DashboardStep({
   state,
+  memoir,
   onCollect,
   onOrganize,
 }: DashboardStepProps) {
@@ -26,9 +39,37 @@ export function DashboardStep({
     "Send a reminder",
   );
 
+  // Falls back to the server when the in-memory claim result is gone, which is
+  // what happens on a reload. Newest memoir first, matching the backend's
+  // ORDER BY created_at DESC.
+  const { data: me, isPending } = useMe();
+  const active = memoir ?? me?.memoirs[0] ?? null;
+
+  // `window` does not exist while this is server-rendered, so the origin is
+  // read as an external store: the server snapshot is "", the client snapshot
+  // is the real origin, and React reconciles the two without a hydration
+  // mismatch. The subscribe function is a no-op because an origin never
+  // changes for the life of the page.
+  const origin = useSyncExternalStore(
+    subscribeToNothing,
+    () => window.location.origin,
+    () => "",
+  );
+
+  // The API returns the token alone and the frontend composes the URL — the
+  // backend has no business knowing this domain, or a staging deploy would
+  // hand out production links.
+  const inviteUrl = active?.link_token
+    ? `${origin}/j/${active.link_token}`
+    : null;
+  /** Same URL without the scheme, which is how the design displays it. */
+  const inviteLabel = inviteUrl?.replace(/^https?:\/\//, "") ?? null;
+
   function copyLink() {
+    if (!inviteUrl) return;
     const done = () => showCopyLabel("Copied", 1800);
-    if (navigator.clipboard) navigator.clipboard.writeText(INVITE_LINK).then(done, done);
+    if (navigator.clipboard)
+      navigator.clipboard.writeText(inviteUrl).then(done, done);
     else done();
   }
 
@@ -90,11 +131,20 @@ export function DashboardStep({
       <div>
         <div className={styles.linklabel}>The link to share</div>
         <div className={styles.linkbox}>
-          <code>{INVITE_LINK}</code>
+          {/*
+            Three states, and they are genuinely different: still loading,
+            loaded with a live link, or loaded with none — which happens when
+            the link has been revoked and not yet reissued.
+          */}
+          <code>
+            {inviteLabel ??
+              (isPending ? "Fetching your link…" : "No live link yet")}
+          </code>
           <button
             type="button"
             className={`${styles.btn} ${styles["btn-primary"]}`}
             onClick={copyLink}
+            disabled={!inviteUrl}
           >
             {copyLabel}
           </button>

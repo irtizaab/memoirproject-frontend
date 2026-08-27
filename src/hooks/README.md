@@ -3,9 +3,18 @@
 React hooks shared across features. **Nothing here knows about your domain**, and nothing here fetches
 data.
 
-This directory is intentionally empty. It has no backend twin — it exists because React has a unit of
-reuse that Python does not. Add a hook the first time a **second** feature needs it; until then it lives
-in the feature that uses it.
+It has no backend twin — it exists because React has a unit of reuse that Python does not. Add a hook
+the first time a **second** caller needs it; until then it lives in the feature that uses it.
+
+## What is here
+
+| Hook | What it does |
+| --- | --- |
+| `useSupabaseSession.ts` | Tracks the signed-in Supabase session and keeps tracking it, so a sign-out in another tab logs this one out too. |
+
+It qualifies despite the "no data fetching" rule below: the session is browser state the Supabase
+SDK already holds in localStorage, not something fetched from our API. Its two callers are
+`AppHeader` and `RequireSession`.
 
 ## What belongs here
 

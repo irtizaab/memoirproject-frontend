@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { toDraftUpdate, useOnboardingDraft } from "@/features/onboarding/hooks";
+import type { MemoirSummary } from "@/features/onboarding/schemas";
 import {
   QUESTION_STEPS,
   STEP_ORDER,
@@ -48,6 +50,14 @@ export function OnboardingFlow() {
   const [step, setStep] = useState<Step>("landing");
   const [state, setState] = useState<OnboardingState>(INITIAL_STATE);
 
+  // The memoir that exists once the draft has been claimed. Null until signup
+  // succeeds; the dashboard falls back to GET /me when it is null, which is
+  // what makes the page survive a reload.
+  const [memoir, setMemoir] = useState<MemoirSummary | null>(null);
+
+  const { ensureDraft, saveAnswers, claim, isClaiming, claimError } =
+    useOnboardingDraft();
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
@@ -65,11 +75,35 @@ export function OnboardingFlow() {
     setState((s) => ({ ...s, ...patch }));
   }
 
+  /**
+   * Advance to the next question, saving what was just answered.
+   *
+   * The save is fired, not awaited: a slow request must not make the next
+   * question feel sluggish. Losing one is survivable because the signup step
+   * re-sends every answer before claiming.
+   */
+  function advance(to: Step, patch: Parameters<typeof saveAnswers>[0]) {
+    saveAnswers(patch);
+    go(to);
+  }
+
   return (
     <div className={styles.shell}>
       <BackgroundLayer step={step} />
 
-      {step === "landing" && <LandingStep onPledge={() => go("name")} />}
+      {/*
+        Creating the draft here, rather than on page load, means a visitor who
+        never starts does not leave an empty row behind. `ensureDraft` restores
+        an existing draft from localStorage if they are coming back.
+      */}
+      {step === "landing" && (
+        <LandingStep
+          onPledge={() => {
+            void ensureDraft();
+            go("name");
+          }}
+        />
+      )}
 
       {isQuestionStep(step) && (
         <div className={`${styles.sheet} ${styles.step}`}>
@@ -95,7 +129,9 @@ export function OnboardingFlow() {
             <NameStep
               name={state.name}
               onChange={(name) => update({ name })}
-              onNext={() => go("rel")}
+              onNext={() =>
+                advance("rel", { subject_name: state.name.trim() })
+              }
             />
           )}
           {step === "rel" && (
@@ -104,7 +140,9 @@ export function OnboardingFlow() {
               rel={state.rel}
               relLabel={state.relLabel}
               onChange={update}
-              onNext={() => go("years")}
+              onNext={() =>
+                advance("years", toDraftUpdate(state))
+              }
             />
           )}
           {step === "years" && (
@@ -116,7 +154,9 @@ export function OnboardingFlow() {
               throughSet={state.throughSet}
               onCommit={(patch) => {
                 update(patch);
-                go("deep");
+                // Built from `patch`, not `state` — setState is asynchronous,
+                // so `state` here is still the pre-commit value.
+                advance("deep", toDraftUpdate({ ...state, ...patch }));
               }}
             />
           )}
@@ -125,14 +165,30 @@ export function OnboardingFlow() {
               name={state.name}
               deep={state.deep}
               onChange={(deep) => update({ deep })}
-              onNext={() => go("signup")}
+              onNext={() =>
+                advance("signup", { never_forget: state.deep.trim() || null })
+              }
             />
           )}
         </div>
       )}
 
+      {/*
+        The hinge. `onClaimed` fires only after the backend has created the
+        memoir, so nothing past this point is showing invented data.
+      */}
       {step === "signup" && (
-        <SignupStep state={state} onBack={() => go("deep")} onNext={() => go("pricing")} />
+        <SignupStep
+          state={state}
+          onBack={() => go("deep")}
+          onClaim={claim}
+          isClaiming={isClaiming}
+          claimError={claimError}
+          onClaimed={(claimed) => {
+            setMemoir(claimed);
+            go("pricing");
+          }}
+        />
       )}
       {step === "pricing" && (
         <PricingStep
@@ -147,6 +203,7 @@ export function OnboardingFlow() {
       {step === "dash" && (
         <DashboardStep
           state={state}
+          memoir={memoir}
           onCollect={() => update({ collected: true })}
           onOrganize={() => go("working")}
         />

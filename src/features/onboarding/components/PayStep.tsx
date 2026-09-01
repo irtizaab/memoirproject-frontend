@@ -1,6 +1,6 @@
 "use client";
 
-import { PLANS } from "@/features/onboarding/data";
+import { chargeSummary, usePlans, useSelectPlan } from "@/features/billing";
 import type { OnboardingState } from "@/features/onboarding/types";
 
 import styles from "../onboarding.module.css";
@@ -8,12 +8,43 @@ import styles from "../onboarding.module.css";
 type PayStepProps = {
   state: OnboardingState;
   onBack: () => void;
-  onNext: () => void;
+  /** Leaves onboarding for the archive. The last thing this flow does. */
+  onDone: () => void;
 };
 
-export function PayStep({ state, onBack, onNext }: PayStepProps) {
-  const [term, , amount] =
-    PLANS.find(([t]) => t === state.term) ?? PLANS[0];
+/**
+ * The last screen before the product.
+ *
+ * The card fields are a placeholder — no processor is wired up, and nothing
+ * typed here is sent anywhere. Stripe replaces the body of this component in
+ * the payment pass; the step, its position in the flow, and where it hands off
+ * to are already correct.
+ *
+ * What it does do is record which term was chosen, so the billing screen
+ * quotes the same one back. That is an entitlement, not a charge: the account
+ * still reports `payments_enabled: false` with no renewal date.
+ */
+export function PayStep({ state, onBack, onDone }: PayStepProps) {
+  const { data: plans } = usePlans();
+  const selectPlan = useSelectPlan();
+
+  const selected =
+    plans?.find((plan) => plan.billing_interval === state.term) ?? plans?.[0];
+
+  async function start() {
+    // Awaited so the billing screen is consistent the moment it is opened, but
+    // failure does not block the exit: the account is already on a valid plan,
+    // and stranding someone at the last step of onboarding over a cosmetic
+    // mismatch would be the worse trade.
+    if (selected) {
+      try {
+        await selectPlan.mutateAsync(selected.code);
+      } catch {
+        // Intentionally swallowed — see above.
+      }
+    }
+    onDone();
+  }
 
   return (
     <div className={`${styles.sheet} ${styles.step}`}>
@@ -22,6 +53,7 @@ export function PayStep({ state, onBack, onNext }: PayStepProps) {
           type="button"
           className={`${styles.back} ${styles.on}`}
           onClick={onBack}
+          disabled={selectPlan.isPending}
         >
           ← Back
         </button>
@@ -29,7 +61,9 @@ export function PayStep({ state, onBack, onNext }: PayStepProps) {
       </div>
       <h2 className={styles.ask}>Payment details</h2>
       <p className={styles["ask-sub"]}>
-        ${amount} {term}, starting today.
+        {selected
+          ? `${chargeSummary(selected)}, starting today.`
+          : "Starting today."}
       </p>
       <div className={styles.pay}>
         <div className={styles.field}>
@@ -70,9 +104,10 @@ export function PayStep({ state, onBack, onNext }: PayStepProps) {
         <button
           type="button"
           className={`${styles.btn} ${styles["btn-primary"]} ${styles["btn-block"]}`}
-          onClick={onNext}
+          onClick={start}
+          disabled={selectPlan.isPending}
         >
-          Start subscription
+          {selectPlan.isPending ? "One moment…" : "Start subscription"}
         </button>
       </div>
       <div className={styles.footnote}>

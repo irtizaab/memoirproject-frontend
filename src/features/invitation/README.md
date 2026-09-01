@@ -38,3 +38,48 @@ token is never handled by client-side JavaScript.
   re-throws anything else, so a backend outage surfaces as an error rather than a missing page.
 - **The contribute flow itself is not built.** This page exists so a shared link resolves to
   something real, and is the obvious place to build on.
+
+
+---
+
+## Contributing (added with the memories slice)
+
+The page is no longer read-only. `ContributeForm` lets someone with no account
+leave a voice note, a photograph, or writing.
+
+| File | What it holds |
+| --- | --- |
+| `hooks.ts` | `useContributorToken`, `useSubmitContribution`, `useMyContributions` |
+| `contributorStorage.ts` | The participant token, as a React external store |
+| `components/ContributeForm.tsx` | The submit flow |
+
+### How a person with no account is remembered
+
+The hardest constraint in the product — "contributors never create accounts" —
+met with the smallest mechanism that works:
+
+1. First submission carries a `display_name` and no token.
+2. The backend creates the `memoir_participant` row and returns a
+   `participant_token`.
+3. `contributorStorage.ts` keeps it in localStorage, keyed **per link**.
+4. Every later submission sends it back, so the same person adds a second
+   memory rather than appearing in the archive twice.
+
+A token that does not match is not an error — it is a cleared cookie or a
+different phone. The backend falls through to creating a new participant.
+Losing a name is recoverable; losing the memory is not.
+
+### The privacy promise is real
+
+`useMyContributions` returns only what this participant added. A contributor
+cannot see the archive, cannot see anyone else's memories, and cannot see the
+owner's `never_forget` answer — the backend's `response_model` filters that out
+of `GET /j/{token}` and this feature's schema does not ask for it. The note
+above the form says so, and it is true rather than reassuring.
+
+### Two data paths, on purpose
+
+- **Server** (`queries.ts` → `server.ts`) resolves the invitation. That
+  endpoint needs no credential, so the subject's name arrives as HTML.
+- **Client** (`hooks.ts`) does everything after. Recording audio is not
+  something a server can do.

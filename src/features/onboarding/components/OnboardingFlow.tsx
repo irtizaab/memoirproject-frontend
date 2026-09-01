@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { useActiveMemoir } from "@/features/account";
+import { useSupabaseSession } from "@/hooks/useSupabaseSession";
 import { toDraftUpdate, useOnboardingDraft } from "@/features/onboarding/hooks";
-import type { MemoirSummary } from "@/features/onboarding/schemas";
 import {
   QUESTION_STEPS,
   STEP_ORDER,
@@ -14,19 +16,14 @@ import {
 
 import styles from "../onboarding.module.css";
 import { BackgroundLayer } from "./BackgroundLayer";
-import { ConfirmStep } from "./ConfirmStep";
-import { DashboardStep } from "./DashboardStep";
 import { DeepStep } from "./DeepStep";
 import { LandingStep } from "./LandingStep";
 import { NameStep } from "./NameStep";
 import { PayStep } from "./PayStep";
 import { PricingStep } from "./PricingStep";
-import { PublishedStep } from "./PublishedStep";
 import { RelationStep } from "./RelationStep";
-import { ReviewStep } from "./ReviewStep";
 import { SignupStep } from "./SignupStep";
 import { Stepper } from "./Stepper";
-import { WorkingStep } from "./WorkingStep";
 import { YearsStep } from "./YearsStep";
 
 const INITIAL_STATE: OnboardingState = {
@@ -38,8 +35,7 @@ const INITIAL_STATE: OnboardingState = {
   bornSet: false,
   through: String(new Date().getFullYear()),
   throughSet: false,
-  collected: false,
-  term: "monthly",
+  term: "month",
 };
 
 function isQuestionStep(step: Step): step is QuestionStep {
@@ -47,20 +43,49 @@ function isQuestionStep(step: Step): step is QuestionStep {
 }
 
 export function OnboardingFlow() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("landing");
   const [state, setState] = useState<OnboardingState>(INITIAL_STATE);
-
-  // The memoir that exists once the draft has been claimed. Null until signup
-  // succeeds; the dashboard falls back to GET /me when it is null, which is
-  // what makes the page survive a reload.
-  const [memoir, setMemoir] = useState<MemoirSummary | null>(null);
 
   const { ensureDraft, saveAnswers, claim, isClaiming, claimError } =
     useOnboardingDraft();
 
+  // Both only consulted by the landing guard below.
+  const { memoir } = useActiveMemoir();
+  const { session, isPending: sessionPending } = useSupabaseSession();
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
+
+  /**
+   * Somebody who already has a memoir does not belong at the start of this.
+   *
+   * Pressing Back from `/archive` lands here, and without this guard a second
+   * run would create a second memoir — which `useActiveMemoir` would then pick
+   * as the active one, since it takes `memoirs[0]` and the backend returns
+   * them newest first. Their real archive would appear to have emptied itself.
+   *
+   * Gated on `landing` specifically: `pricing` and `pay` run with both a
+   * session and a memoir by design, and bouncing those would make it
+   * impossible to reach them at all.
+   */
+  useEffect(() => {
+    /*
+      Gated on a live session as well as a memoir, and the session half is what
+      stops an infinite redirect.
+
+      `memoir` comes from the query cache. Signing out clears the session but
+      not necessarily that cache, so a memoir could still be visible here with
+      nobody signed in — this would send them to /archive, `RequireSession`
+      would send them back, and neither screen would ever settle. AppHeader now
+      clears the cache on sign-out too; this is the second wall, because a guard
+      that loops is a far worse failure than one that redirects a beat late.
+    */
+    if (step === "landing" && !sessionPending && session && memoir) {
+      router.replace("/archive");
+    }
+  }, [step, memoir, session, sessionPending, router]);
 
   function go(to: Step) {
     setStep(to);
@@ -175,7 +200,10 @@ export function OnboardingFlow() {
 
       {/*
         The hinge. `onClaimed` fires only after the backend has created the
-        memoir, so nothing past this point is showing invented data.
+        memoir, so nothing past this point is showing invented data. The claim
+        response itself is consumed by `useOnboardingDraft`, which seeds it
+        into the `/me` cache — which is why `/archive` renders the subject's
+        name instantly at the end of this flow rather than after a round trip.
       */}
       {step === "signup" && (
         <SignupStep
@@ -184,10 +212,7 @@ export function OnboardingFlow() {
           onClaim={claim}
           isClaiming={isClaiming}
           claimError={claimError}
-          onClaimed={(claimed) => {
-            setMemoir(claimed);
-            go("pricing");
-          }}
+          onClaimed={() => go("pricing")}
         />
       )}
       {step === "pricing" && (
@@ -197,25 +222,20 @@ export function OnboardingFlow() {
           onNext={() => go("pay")}
         />
       )}
+
+      {/*
+        The end of onboarding, and the beginning of the product.
+        `router.push`, not `window.location` — a client navigation keeps the
+        query cache the claim just seeded, so the archive is already holding
+        this memoir when it mounts.
+      */}
       {step === "pay" && (
-        <PayStep state={state} onBack={() => go("pricing")} onNext={() => go("dash")} />
-      )}
-      {step === "dash" && (
-        <DashboardStep
+        <PayStep
           state={state}
-          memoir={memoir}
-          onCollect={() => update({ collected: true })}
-          onOrganize={() => go("working")}
+          onBack={() => go("pricing")}
+          onDone={() => router.push("/archive")}
         />
       )}
-      {step === "working" && <WorkingStep onDone={() => go("review")} />}
-      {step === "review" && (
-        <ReviewStep onSave={() => go("dash")} onPublish={() => go("confirm")} />
-      )}
-      {step === "confirm" && (
-        <ConfirmStep onBack={() => go("review")} onPublish={() => go("published")} />
-      )}
-      {step === "published" && <PublishedStep state={state} />}
     </div>
   );
 }

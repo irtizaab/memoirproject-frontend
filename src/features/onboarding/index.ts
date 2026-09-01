@@ -14,15 +14,12 @@ export { OnboardingFlow } from "@/features/onboarding/components/OnboardingFlow"
 export {
   onboardingKeys,
   toDraftUpdate,
-  useMe,
   useOnboardingDraft,
 } from "@/features/onboarding/hooks";
 export type {
-  AccountOverview,
   Draft,
   DraftCreated,
   DraftUpdate,
-  MemoirSummary,
   RelationshipGroup,
   SignupFormValues,
 } from "@/features/onboarding/schemas";

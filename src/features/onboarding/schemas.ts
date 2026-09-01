@@ -13,6 +13,19 @@
 
 import { z } from "zod";
 
+// The account shapes live in `features/account/`, because every signed-in
+// screen reads them and none of those screens should import from a flow the
+// user finished at signup. Re-exported here so `claimDraft` — which returns a
+// MemoirSummary — keeps its contract in one import.
+export {
+  accountOverviewSchema,
+  memoirSummarySchema,
+} from "@/features/account/schemas";
+export type {
+  AccountOverview,
+  MemoirSummary,
+} from "@/features/account/schemas";
+
 /**
  * Mirrors the `relationship_group` Postgres enum.
  *
@@ -74,27 +87,6 @@ export const draftSchema = z.object({
 });
 
 /** Mirrors `MemoirSummary`. */
-export const memoirSummarySchema = z.object({
-  id: z.uuid(),
-  subject_name: z.string(),
-  born_year: z.number().int().nullable(),
-  through_year: z.number().int().nullable(),
-  subject_is_living: z.boolean().nullable(),
-  never_forget: z.string().nullable(),
-  status: z.string(),
-  created_at: z.string(),
-  /** Null when the share link has been revoked and not yet reissued. */
-  link_token: z.string().nullable(),
-});
-
-/** Mirrors `AccountOverview` — the body of `GET /me`. */
-export const accountOverviewSchema = z.object({
-  id: z.uuid(),
-  email: z.string(),
-  full_name: z.string(),
-  memoirs: z.array(memoirSummarySchema),
-});
-
 /**
  * The signup form.
  *
@@ -113,6 +105,4 @@ export type RelationshipGroup = z.infer<typeof relationshipGroupSchema>;
 export type DraftCreated = z.infer<typeof draftCreatedSchema>;
 export type DraftUpdate = z.infer<typeof draftUpdateSchema>;
 export type Draft = z.infer<typeof draftSchema>;
-export type MemoirSummary = z.infer<typeof memoirSummarySchema>;
-export type AccountOverview = z.infer<typeof accountOverviewSchema>;
 export type SignupFormValues = z.output<typeof signupFormSchema>;

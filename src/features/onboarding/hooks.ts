@@ -13,15 +13,15 @@
  * keys and invalidation live in one place.
  */
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useSyncExternalStore } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import {
-  claimDraft,
-  createDraft,
-  getMe,
-  updateDraft,
-} from "@/features/onboarding/api";
+import { accountKeys } from "@/features/account/hooks";
+import type {
+  AccountOverview,
+  MemoirSummary,
+} from "@/features/account/schemas";
+import { claimDraft, createDraft, updateDraft } from "@/features/onboarding/api";
 import {
   clearStoredDraft,
   getDraftServerSnapshot,
@@ -32,13 +32,10 @@ import {
 } from "@/features/onboarding/draftStorage";
 import {
   relationshipGroupSchema,
-  type AccountOverview,
   type DraftCreated,
   type DraftUpdate,
-  type MemoirSummary,
 } from "@/features/onboarding/schemas";
 import type { OnboardingState } from "@/features/onboarding/types";
-import { getAccessToken } from "@/lib/supabase/client";
 
 /**
  * Cache keys as a factory rather than scattered string arrays. Hand-writing
@@ -46,7 +43,6 @@ import { getAccessToken } from "@/lib/supabase/client";
  */
 export const onboardingKeys = {
   all: ["onboarding"] as const,
-  me: () => [...onboardingKeys.all, "me"] as const,
 };
 
 /**
@@ -174,13 +170,13 @@ export function useOnboardingDraft() {
       // Seed the /me cache from the claim response rather than refetching.
       // The dashboard renders immediately, and a later refetch still works.
       queryClient.setQueryData<AccountOverview | undefined>(
-        onboardingKeys.me(),
+        accountKeys.me(),
         (previous) =>
           previous
             ? { ...previous, memoirs: [memoir, ...previous.memoirs] }
             : previous,
       );
-      void queryClient.invalidateQueries({ queryKey: onboardingKeys.all });
+      void queryClient.invalidateQueries({ queryKey: accountKeys.all });
     },
   });
 
@@ -192,31 +188,4 @@ export function useOnboardingDraft() {
     isClaiming: claimMutation.isPending,
     claimError: claimMutation.error,
   };
-}
-
-/**
- * The signed-in user and their memoirs.
- *
- * `enabled` is gated on there actually being a session, so this does not fire
- * a guaranteed 401 for every anonymous visitor. The token check runs in its
- * own effect because reading the session is async.
- */
-export function useMe() {
-  const [hasSession, setHasSession] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void getAccessToken().then((token) => {
-      if (!cancelled) setHasSession(Boolean(token));
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return useQuery({
-    queryKey: onboardingKeys.me(),
-    queryFn: () => getMe(),
-    enabled: hasSession,
-  });
 }

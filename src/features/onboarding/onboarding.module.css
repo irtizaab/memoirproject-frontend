@@ -89,25 +89,6 @@
   color: var(--ink);
   border-bottom-color: var(--ink-faint);
 }
-.btn-quiet {
-  background: none;
-  border: none;
-  padding: 6px 2px;
-  cursor: pointer;
-  font-family: var(--font-utility);
-  font-size: 13px;
-  color: var(--ink-soft);
-  border-bottom: 1px solid var(--rule);
-}
-.btn-quiet:hover {
-  color: var(--seal);
-  border-bottom-color: var(--seal);
-}
-.btn-quiet:focus-visible {
-  outline: 2px solid var(--seal);
-  outline-offset: 3px;
-}
-
 /* ---------- sheet ---------- */
 .sheet {
   width: 100%;
@@ -600,148 +581,6 @@
   background: var(--paper-deep);
 }
 
-/* ---------- dashboard ---------- */
-.dash-head {
-  text-align: center;
-  margin-bottom: 32px;
-}
-.dash-head h2 {
-  font-size: clamp(26px, 4.4vw, 36px);
-  font-weight: 400;
-  line-height: 1.16;
-  letter-spacing: -0.012em;
-  margin: 12px 0 0;
-}
-.dash-head p {
-  font-family: var(--font-utility);
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--ink-soft);
-  max-width: 440px;
-  margin: 16px auto 0;
-}
-.linklabel {
-  font-family: var(--font-utility);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--seal);
-  margin-bottom: 10px;
-  text-align: center;
-}
-.linkbox {
-  background: var(--paper-deep);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  padding: 14px 14px 14px 22px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  justify-content: space-between;
-}
-.linkbox code {
-  font-family: var(--font-utility);
-  font-size: 13.5px;
-  color: var(--ink);
-  word-break: break-all;
-  flex: 1;
-  min-width: 190px;
-  text-align: left;
-}
-.share-row {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  margin-top: 14px;
-  flex-wrap: wrap;
-}
-.dash-foot {
-  font-family: var(--font-utility);
-  font-size: 12px;
-  color: var(--ink-faint);
-  text-align: center;
-  margin-top: 28px;
-  line-height: 1.7;
-}
-
-/* ---------- people ---------- */
-.people {
-  margin-top: 30px;
-  border-top: 1px solid var(--rule);
-}
-.person {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  padding: 15px 2px;
-  border-bottom: 1px solid var(--rule);
-}
-.person-n {
-  font-family: var(--font-display);
-  font-size: 17px;
-  flex: 1;
-  text-align: left;
-}
-.person-r {
-  font-family: var(--font-utility);
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-.person-c {
-  font-family: var(--font-utility);
-  font-size: 12px;
-  color: var(--ink-soft);
-  min-width: 92px;
-  text-align: right;
-}
-.person.pending .person-n,
-.person.pending .person-c {
-  color: var(--ink-faint);
-}
-.person-more {
-  font-family: var(--font-utility);
-  font-size: 12px;
-  color: var(--ink-faint);
-  padding: 15px 2px;
-  text-align: left;
-}
-
-/* ---------- stats ---------- */
-.stats {
-  display: flex;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  overflow: hidden;
-  margin-top: 30px;
-}
-.stat {
-  flex: 1;
-  text-align: center;
-  padding: 22px 6px;
-  border-right: 1px solid var(--rule);
-}
-.stat:last-child {
-  border-right: none;
-}
-.stat-n {
-  font-family: var(--font-display);
-  font-size: 27px;
-  font-weight: 400;
-  line-height: 1;
-}
-.stat-l {
-  font-family: var(--font-utility);
-  font-size: 9.5px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  margin-top: 8px;
-}
-
 /* ---------- payment ---------- */
 .pay {
   max-width: 400px;
@@ -766,25 +605,6 @@
 }
 
 /* ---------- working ---------- */
-.working {
-  text-align: center;
-  padding: 34px 0 10px;
-}
-.work-line {
-  font-family: var(--font-utility);
-  font-size: 13px;
-  color: var(--ink-soft);
-  min-height: 20px;
-  letter-spacing: 0.02em;
-}
-.work-mark {
-  width: 6px;
-  height: 6px;
-  background: var(--seal);
-  transform: rotate(45deg);
-  margin: 0 auto 22px;
-  animation: pulse 1.6s ease-in-out infinite;
-}
 @keyframes pulse {
   0%,
   100% {
@@ -795,81 +615,7 @@
   }
 }
 
-/* ---------- chapters ---------- */
-.chaps {
-  margin-top: 32px;
-  border-top: 1px solid var(--rule);
-}
-.chap {
-  padding: 17px 0;
-  border-bottom: 1px solid var(--rule);
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  text-align: left;
-}
-.chap-i {
-  font-family: var(--font-utility);
-  font-size: 10.5px;
-  color: var(--ink-faint);
-  width: 18px;
-  flex: none;
-  padding-top: 8px;
-  letter-spacing: 0.1em;
-}
-.chap-b {
-  flex: 1;
-  min-width: 0;
-}
-.chap-t {
-  font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 400;
-  width: 100%;
-  border: none;
-  background: none;
-  border-bottom: 1px solid transparent;
-  padding: 3px 0;
-  color: var(--ink);
-  border-radius: 0;
-}
-.chap-t:hover {
-  border-bottom-color: var(--rule);
-}
-.chap-t:focus {
-  outline: none;
-  border-bottom-color: var(--seal);
-}
-.chap-m {
-  font-family: var(--font-utility);
-  font-size: 11.5px;
-  color: var(--ink-faint);
-  margin-top: 5px;
-  line-height: 1.5;
-}
-.chap-flag {
-  color: var(--seal);
-}
-
-/* ---------- confirm ---------- */
-.warn {
-  border: 1px solid var(--seal);
-  padding: 22px 24px;
-  margin-top: 30px;
-  text-align: left;
-  font-family: var(--font-utility);
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--ink-soft);
-}
-.warn b {
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 400;
-  color: var(--ink);
-  display: block;
-  margin-bottom: 8px;
-}
+/* ---------- terms checkbox ---------- */
 .check {
   display: flex;
   gap: 10px;
@@ -892,22 +638,6 @@
   height: 16px;
   accent-color: var(--seal);
   cursor: pointer;
-}
-
-.jump {
-  display: block;
-  margin: 30px auto 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-utility);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-.jump:hover {
-  color: var(--seal);
 }
 
 /* ---------- pricing ---------- */
@@ -1102,12 +832,6 @@
   }
   .plan-right {
     padding: 0;
-  }
-  .stats {
-    flex-wrap: wrap;
-  }
-  .stat {
-    min-width: 33%;
   }
   .pay-row {
     flex-direction: column;

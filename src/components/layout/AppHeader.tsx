@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Wordmark } from "@/components/layout/Wordmark";
 import { useSupabaseSession } from "@/hooks/useSupabaseSession";
@@ -76,6 +77,7 @@ function NavLinks({ pathname }: { pathname: string }) {
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { session } = useSupabaseSession();
 
   const user = session?.user;
@@ -88,6 +90,20 @@ export function AppHeader() {
 
   async function signOut() {
     await supabase.auth.signOut();
+
+    /*
+      Empty the query cache before leaving, and this is not housekeeping.
+
+      Supabase clears the session, but TanStack Query still holds the answer to
+      `GET /me` — including the memoir. Onboarding's landing guard reads that
+      cache to decide whether someone already has a memoir, so it would see one,
+      redirect to /archive, find no session, redirect back to /onboarding, and
+      bounce between the two forever. Signing out looked like an infinite loop.
+
+      It is also the right thing on its own terms: the next person to sign in on
+      this browser must not inherit the last one's archive from a stale cache.
+    */
+    queryClient.clear();
     router.push("/onboarding");
   }
 

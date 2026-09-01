@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +10,9 @@ import {
   type MemoirSummary,
   type SignupFormValues,
 } from "@/features/onboarding/schemas";
+
 import type { OnboardingState } from "@/features/onboarding/types";
+import { isApiError } from "@/lib/api/errors";
 import {
   signInWithGoogle,
   signInWithPassword,
@@ -26,7 +29,12 @@ type SignupStepProps = {
   onClaim: (state: OnboardingState) => Promise<MemoirSummary>;
   isClaiming: boolean;
   claimError: Error | null;
-  onClaimed: (memoir: MemoirSummary) => void;
+  /**
+   * Called once the memoir exists. Takes nothing: the claim response is
+   * consumed by `useOnboardingDraft`, which seeds it into the `/me` cache, so
+   * there is no reason to hand the same object round the component tree.
+   */
+  onClaimed: () => void;
 };
 
 export function SignupStep({
@@ -90,7 +98,8 @@ export function SignupStep({
     // Errors here are surfaced through `claimError` by the parent's mutation,
     // so there is nothing to catch — a failed claim simply does not advance.
     try {
-      onClaimed(await onClaim(state));
+      await onClaim(state);
+      onClaimed();
     } catch {
       // Intentionally empty: `claimError` renders the message below.
     }
@@ -109,7 +118,23 @@ export function SignupStep({
     }
   }
 
-  const message = authError ?? claimError?.message ?? null;
+  /*
+    An account owns one memoir. Someone who signs in with an existing email and
+    runs onboarding again gets a 409 from `POST /memoirs/claim` — not because
+    anything failed, but because they already have what they were making. The
+    generic error text would send them looking for a bug, so this says what
+    happened and where their archive is.
+
+    The rule is enforced by `memoir_one_per_account` in migration 0007. Before
+    it existed, a second run silently replaced the visible memoir and every
+    memory in the first became unreachable.
+  */
+  const alreadyHasMemoir =
+    isApiError(claimError) && claimError.status === 409;
+
+  const message = alreadyHasMemoir
+    ? null
+    : (authError ?? claimError?.message ?? null);
 
   return (
     <div className={`${styles.sheet} ${styles.step}`}>
@@ -193,6 +218,16 @@ export function SignupStep({
         {message && (
           <p role="alert" className={styles["ask-sub"]}>
             {message}
+          </p>
+        )}
+
+        {alreadyHasMemoir && (
+          <p role="alert" className={styles["ask-sub"]}>
+            You already have a memoir on this account.{" "}
+            <Link href="/archive" style={{ textDecoration: "underline" }}>
+              Open your archive
+            </Link>
+            .
           </p>
         )}
 

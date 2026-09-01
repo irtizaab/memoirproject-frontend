@@ -1,46 +1,9 @@
-import type { PlanTerm } from "@/features/onboarding/types";
-
 /** [chip label, relation value] */
 export const RELATIONS: [string, string][] = [
   ["My parent", "child"],
   ["My grandparent", "grandchild"],
   ["My partner", "spouse_partner"],
   ["My friend", "friend"],
-];
-
-/** [name, relation, contribution, hasJoined] */
-export const PEOPLE: [string, string, string, boolean][] = [
-  ["Yusuf Khan", "Brother", "6 memories", true],
-  ["Amina Sethi", "Daughter", "4 memories", true],
-  ["Rukhsana Bibi", "Sister", "3 memories", true],
-  ["Nadia Khan", "Granddaughter", "10 memories", true],
-  ["Tariq Mahmood", "Friend", "Opened, nothing yet", false],
-];
-
-/** [title, meta, flag] */
-export const CHAPTERS: [string, string, string][] = [
-  ["The bakery on Kissa Khwani", "5 memories · 4 photographs", ""],
-  [
-    "Coming to Peshawar, 1961",
-    "3 memories · dated from two accounts",
-    "",
-  ],
-  ["The house on Jamrud Road", "4 memories · 11 photographs", ""],
-  [
-    "Sundays",
-    "3 memories",
-    "Two accounts of the same afternoon differ — both kept.",
-  ],
-  ["The years at the mill", "5 memories · 9 photographs", ""],
-  ["What people said about him", "3 memories · 7 photographs", ""],
-];
-
-export const WORK_MESSAGES = [
-  "Reading 23 memories…",
-  "Finding what can be dated…",
-  "Matching photographs to the stories that mention them…",
-  "Drafting chapters…",
-  "Almost there…",
 ];
 
 /** [title, description] */
@@ -66,12 +29,6 @@ export const FEATURES: [string, string][] = [
     "Unlisted and searchable, with a comment layer that never expires",
   ],
   ["PDF export", "Downloadable and yours permanently"],
-];
-
-/** [term, label, price, per, note] */
-export const PLANS: [PlanTerm, string, string, string, string][] = [
-  ["monthly", "Monthly", "3", "/month", "Billed monthly. Cancel any time."],
-  ["yearly", "Yearly", "30", "/year", "Billed once a year — two months free."],
 ];
 
 /**

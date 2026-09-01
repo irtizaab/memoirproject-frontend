@@ -20,23 +20,22 @@
 import { apiRequest, type ApiRequestCaching } from "@/lib/api/client";
 import { authHeaders } from "@/lib/supabase/client";
 import {
-  accountOverviewSchema,
+  memoirSummarySchema,
+  type MemoirSummary,
+} from "@/features/account/schemas";
+import {
   draftCreatedSchema,
   draftSchema,
   draftUpdateSchema,
-  memoirSummarySchema,
-  type AccountOverview,
   type Draft,
   type DraftCreated,
   type DraftUpdate,
-  type MemoirSummary,
 } from "@/features/onboarding/schemas";
 
 const ENDPOINTS = {
   drafts: "/drafts",
   draft: (id: string) => `/drafts/${id}`,
   claim: "/memoirs/claim",
-  me: "/me",
 } as const;
 
 type RequestOptions = ApiRequestCaching & { signal?: AbortSignal };
@@ -104,27 +103,6 @@ export async function claimDraft(
       ...(await authHeaders()),
     },
     schema: memoirSummarySchema,
-    ...options,
-  });
-}
-
-/**
- * The signed-in user and the memoirs they own.
- *
- * How the dashboard survives a page reload: the claim response is gone, but
- * this returns the same memoir and share link. Returns an empty `memoirs`
- * array — not a 404 — for someone who has signed up but claimed nothing.
- */
-export async function getMe(
-  options: RequestOptions = {},
-): Promise<AccountOverview> {
-  return apiRequest({
-    path: ENDPOINTS.me,
-    method: "GET",
-    headers: await authHeaders(),
-    schema: accountOverviewSchema,
-    // Never cached: it is per-user and changes the moment a draft is claimed.
-    cache: "no-store",
     ...options,
   });
 }

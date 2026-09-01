@@ -84,11 +84,23 @@ export async function apiRequest<TSchema extends ZodType>({
     throw ApiError.http(url, response.status, await readErrorDetail(response));
   }
 
+  // 204 No Content is a real answer, not a malformed one. `DELETE` uses it:
+  // there is nothing meaningful to say about a thing that no longer exists.
+  // Parsing it as JSON would fail on an empty string and report a contract
+  // violation for a correct response, so the schema is given `undefined` and
+  // callers declare that with `z.undefined()`.
+  const hasNoBody =
+    response.status === 204 || response.headers.get("content-length") === "0";
+
   let payload: unknown;
-  try {
-    payload = await response.json();
-  } catch (cause) {
-    throw ApiError.contract(url, "the body was not valid JSON.", cause);
+  if (hasNoBody) {
+    payload = undefined;
+  } else {
+    try {
+      payload = await response.json();
+    } catch (cause) {
+      throw ApiError.contract(url, "the body was not valid JSON.", cause);
+    }
   }
 
   // The contract check. A failure here means the backend changed shape — the

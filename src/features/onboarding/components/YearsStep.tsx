@@ -39,7 +39,6 @@ export function YearsStep({
 }: YearsStepProps) {
   const bornRef = useRef<HTMLDivElement>(null);
   const throughRef = useRef<HTMLDivElement>(null);
-  const throughSetRef = useRef(throughSet);
 
   const bornInitialIndex = bornSet
     ? Math.max(0, BORN_YEARS.indexOf(born))
@@ -52,11 +51,25 @@ export function YearsStep({
     : 0;
 
   function commit() {
+    /*
+      An untouched "through" wheel commits the current year.
+
+      The wheel already *shows* it — `throughInitialIndex` is 0, and
+      THROUGH_YEARS starts at this year — so somebody who scrolls the Born wheel
+      and presses on has, as far as they can tell, said "through 2026". Treating
+      that as "no answer" recorded null and left the archive with no years line
+      at all, which does not match what they were looking at.
+
+      What it means downstream: `subject_is_living: false` with
+      `through_year: NOW`, because Postgres rejects a living subject with an end
+      year (`draft_living_has_no_end_year`). Somebody recording a living person
+      picks "Present" on the wheel, which is what that option is for.
+    */
     const patch: YearsPatch = {
       born: "",
       bornSet: false,
       through: String(NOW),
-      throughSet: throughSetRef.current,
+      throughSet: true,
     };
 
     const bornEl = bornRef.current;
@@ -69,8 +82,10 @@ export function YearsStep({
       }
     }
 
+    // Read the wheel wherever it is sitting, touched or not — its resting
+    // position is the current year, which is exactly the default we want.
     const throughEl = throughRef.current;
-    if (throughSetRef.current && throughEl) {
+    if (throughEl) {
       const ti = Math.round(throughEl.scrollTop / ITEM_HEIGHT);
       const value = THROUGH_YEARS[ti];
       if (value) patch.through = value === "Present" ? "present" : value;
@@ -101,9 +116,6 @@ export function YearsStep({
           values={THROUGH_YEARS}
           initialIndex={throughInitialIndex}
           wheelRef={throughRef}
-          onPick={() => {
-            throughSetRef.current = true;
-          }}
         />
       </div>
       <div className={styles.actions}>

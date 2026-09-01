@@ -5,6 +5,28 @@ that feature needs. **Deleting the folder should delete the feature completely.*
 
 Copy `example/` to start a new one.
 
+## The features that exist
+
+| Feature | Who it serves | Data path |
+| --- | --- | --- |
+| `onboarding/` | A visitor with no account yet, up to signup | client |
+| `account/` | The signed-in user: `GET /me`, and which memoir a screen is about | client |
+| `archive/` | The owner: their memories, and adding more | client |
+| `contributors/` | The owner: who is in the memoir, and the share link | client |
+| `billing/` | The owner: their plan and storage meter | client |
+| `media/` | Both owner and contributor: getting a file into storage | client |
+| `invitation/` | A contributor, who has no account and never will | **both** |
+| `example/` | Nobody — reference scaffolding, kept as the pattern to copy | both |
+
+`invitation/` is the only one with a server data path, because `GET /j/{token}`
+is the only endpoint that needs no credential. Everything else is authenticated
+with a Supabase token held in the browser, which a server render cannot reach.
+
+The dependency direction worth preserving: `archive`, `contributors` and
+`billing` all read `account`; `archive` and `invitation` both use `media`.
+Nothing depends on `onboarding` — it is where an account begins, not something
+the rest of the app consults.
+
 ## What a feature folder holds
 
 ```

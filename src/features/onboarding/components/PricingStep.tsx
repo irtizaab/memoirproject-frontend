@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 
-import { FEATURES, PLANS } from "@/features/onboarding/data";
+import { FEATURES } from "@/features/onboarding/data";
+import {
+  billingNote,
+  intervalLabel,
+  priceParts,
+  usePlans,
+  type Plan,
+} from "@/features/billing";
 import type { OnboardingState, PlanTerm } from "@/features/onboarding/types";
 import { firstName, possessive } from "@/features/onboarding/utils";
 
@@ -17,15 +24,26 @@ type PricingStepProps = {
   onNext: () => void;
 };
 
+/**
+ * What it costs.
+ *
+ * The prices come from `GET /plans`, not from a constant in this repo. They
+ * used to live in a `PLANS` array here while the database held a different
+ * figure, and the two drifted by five dollars a month before anyone compared
+ * them. The billing screen reads the same rows.
+ */
 export function PricingStep({
   state,
   onChangeTerm,
   onNext,
 }: PricingStepProps) {
   const [agreed, setAgreed] = useState(false);
-  const [, , amount, per, note] =
-    PLANS.find(([term]) => term === state.term) ?? PLANS[0];
+  const { data: plans, isPending, error } = usePlans();
+
   const possessiveName = possessive(firstName(state.name));
+
+  const selected: Plan | undefined =
+    plans?.find((plan) => plan.billing_interval === state.term) ?? plans?.[0];
 
   return (
     <div className={`${styles.sheet} ${styles.step}`}>
@@ -42,29 +60,48 @@ export function PricingStep({
             Kept for as long as anyone wants to visit it.
           </div>
 
-          <div className={styles.seg}>
-            {PLANS.map(([term, label]) => (
-              <button
-                key={term}
-                type="button"
-                className={`${styles["seg-o"]} ${state.term === term ? styles.sel : ""}`}
-                onClick={() => onChangeTerm(term)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className={styles["big-price"]}>
-            <span className={styles.cur}>$</span>
-            <span className={styles.amt}>{amount}</span>
-            <span className={styles.per}>{per}</span>
-          </div>
-          <div className={styles["price-note"]}>{note}</div>
+          {/*
+            Nothing priced is rendered until the answer arrives. A placeholder
+            number that corrects itself a moment later is worse than a blank
+            space on the one screen where the figure has to be right.
+          */}
+          {selected ? (
+            <>
+              <div className={styles.seg}>
+                {plans?.map((plan) => (
+                  <button
+                    key={plan.code}
+                    type="button"
+                    className={`${styles["seg-o"]} ${
+                      selected.code === plan.code ? styles.sel : ""
+                    }`}
+                    onClick={() => onChangeTerm(plan.billing_interval)}
+                  >
+                    {intervalLabel(plan)}
+                  </button>
+                ))}
+              </div>
+              <div className={styles["big-price"]}>
+                <span className={styles.cur}>{priceParts(selected).symbol}</span>
+                <span className={styles.amt}>{priceParts(selected).amount}</span>
+                <span className={styles.per}>{priceParts(selected).per}</span>
+              </div>
+              <div className={styles["price-note"]}>
+                {billingNote(selected)}
+              </div>
+            </>
+          ) : (
+            <div className={styles["price-note"]}>
+              {error
+                ? "The price could not be loaded just now. Please try again in a moment."
+                : " "}
+            </div>
+          )}
 
           <button
             type="button"
             className={`${styles.btn} ${styles["btn-primary"]} ${styles["btn-block"]}`}
-            disabled={!agreed}
+            disabled={!agreed || !selected || isPending}
             onClick={onNext}
           >
             Begin {possessiveName} memoir

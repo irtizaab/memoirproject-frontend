@@ -3,11 +3,30 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { LogOut, Monitor, Moon, Sun } from "lucide-react";
 
 import { Wordmark } from "@/components/layout/Wordmark";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSupabaseSession } from "@/hooks/useSupabaseSession";
+import { useTheme, type Theme } from "@/hooks/useTheme";
 import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+
+/** The three palette choices, in the order the menu shows them. */
+const THEMES: { value: Theme; label: string; Icon: typeof Sun }[] = [
+  { value: "light", label: "Light", Icon: Sun },
+  { value: "dark", label: "Dark", Icon: Moon },
+  { value: "system", label: "System", Icon: Monitor },
+];
 
 type NavItem = {
   href: string;
@@ -79,6 +98,7 @@ export function AppHeader() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { session } = useSupabaseSession();
+  const { theme, setTheme } = useTheme();
 
   const user = session?.user;
   const metadata = user?.user_metadata as
@@ -117,20 +137,64 @@ export function AppHeader() {
         </nav>
 
         {/*
-          The avatar is a sign-out control, not a menu. There is exactly one
-          thing to do here today, and a dropdown holding a single item is a
-          click tax. It becomes a menu when there is a second item.
+          The avatar was a sign-out button for as long as signing out was the
+          only thing to do here, on the grounds that a dropdown holding one item
+          is a click tax. Appearance is the second item, so it is a menu now —
+          which is what the note that used to sit here said would happen.
         */}
         {initials ? (
-          <button
-            type="button"
-            onClick={signOut}
-            title="Sign out"
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ink font-sans text-[11px] font-medium tracking-wide text-paper transition-colors hover:bg-seal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            <span className="sr-only">Sign out</span>
-            <span aria-hidden>{initials}</span>
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label="Account and appearance"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ink font-sans text-[11px] font-medium tracking-wide text-paper transition-colors hover:bg-seal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  <span aria-hidden>{initials}</span>
+                </button>
+              }
+            />
+
+            <DropdownMenuContent align="end" className="w-56">
+              {user?.email && (
+                <>
+                  <DropdownMenuLabel className="truncate font-normal text-ink-faint">
+                    {user.email}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+
+              <DropdownMenuLabel className="eyebrow-muted">
+                Appearance
+              </DropdownMenuLabel>
+              {/*
+                Three options, not a switch. "System" is a real answer and the
+                default one — it means "follow this machine, including when it
+                changes at sunset" — and a two-state toggle has nowhere to put
+                it.
+              */}
+              <DropdownMenuRadioGroup
+                value={theme}
+                onValueChange={(value) => setTheme(value as Theme)}
+              >
+                {THEMES.map(({ value, label, Icon }) => (
+                  <DropdownMenuRadioItem key={value} value={value}>
+                    <Icon aria-hidden className="mr-2 size-4 text-ink-soft" />
+                    {label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem onClick={signOut}>
+                <LogOut aria-hidden className="mr-2 size-4 text-ink-soft" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : (
           // Holds the space while the session loads, so the row does not jump.
           <span className="size-8 shrink-0" aria-hidden />

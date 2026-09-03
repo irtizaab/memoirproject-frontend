@@ -20,6 +20,9 @@ import {
 const ENDPOINTS = {
   memories: (memoirId: string) => `/memoirs/${memoirId}/memories`,
   memory: (memoryId: string) => `/memories/${memoryId}`,
+  assets: (memoryId: string) => `/memories/${memoryId}/assets`,
+  asset: (memoryId: string, assetId: string) =>
+    `/memories/${memoryId}/assets/${assetId}`,
 } as const;
 
 type RequestOptions = ApiRequestCaching & { signal?: AbortSignal };
@@ -106,6 +109,56 @@ export async function deleteMemory(
   });
 }
 
+
+/**
+ * Adds already-uploaded photographs or recordings to an existing memory.
+ *
+ * The upload still happens first, by `features/media`, exactly as it does when
+ * a memory is created — a file needs somewhere to go before it can be attached
+ * to anything. This call adopts the ids that came back.
+ *
+ * Returns the memory as it now stands, including a possibly-changed `kind`:
+ * adding a recording to a written memory makes it a voice memory, and the
+ * backend works that out rather than the client guessing.
+ */
+export async function attachAssets(
+  memoryId: string,
+  assetIds: string[],
+  options: RequestOptions = {},
+): Promise<Memory> {
+  return apiRequest({
+    path: ENDPOINTS.assets(memoryId),
+    method: "POST",
+    body: { asset_ids: assetIds },
+    headers: await authHeaders(),
+    schema: memorySchema,
+    ...options,
+  });
+}
+
+/**
+ * Removes one photograph or recording, and deletes the file behind it.
+ *
+ * Returns the memory rather than nothing, because what is left still exists
+ * and its `kind` may have just changed.
+ *
+ * Answers 400 if this would leave the memory empty — the same rule as
+ * creating one. Nothing is deleted in that case, so the caller can surface the
+ * message and the file is still there.
+ */
+export async function removeAsset(
+  memoryId: string,
+  assetId: string,
+  options: RequestOptions = {},
+): Promise<Memory> {
+  return apiRequest({
+    path: ENDPOINTS.asset(memoryId, assetId),
+    method: "DELETE",
+    headers: await authHeaders(),
+    schema: memorySchema,
+    ...options,
+  });
+}
 
 /**
  * One memory in full.

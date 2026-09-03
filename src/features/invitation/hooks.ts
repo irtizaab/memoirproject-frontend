@@ -9,7 +9,7 @@
  * for.
  */
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -18,6 +18,7 @@ import {
 } from "@/features/invitation/api";
 import {
   getContributorServerSnapshot,
+  migrateContributorToken,
   readContributorToken,
   storeContributorToken,
   subscribeToContributor,
@@ -40,11 +41,23 @@ export const invitationKeys = {
  * Read through `useSyncExternalStore` rather than copied into state in an
  * effect: React handles the server/client split through the two snapshot
  * functions, so there is no hydration mismatch and no cascading render.
+ *
+ * Keyed on the memoir rather than the link — a reissued link must not forget
+ * the people who already contributed. `linkToken` is still needed for one
+ * thing: carrying across a token stored under the old key. See
+ * `contributorStorage.ts`.
  */
-export function useContributorToken(linkToken: string): string | null {
+export function useContributorToken(
+  memoirId: string,
+  linkToken: string,
+): string | null {
+  useEffect(() => {
+    migrateContributorToken(memoirId, linkToken);
+  }, [memoirId, linkToken]);
+
   const getSnapshot = useCallback(
-    () => readContributorToken(linkToken),
-    [linkToken],
+    () => readContributorToken(memoirId),
+    [memoirId],
   );
 
   return useSyncExternalStore(
@@ -61,18 +74,41 @@ export function useContributorToken(linkToken: string): string | null {
  * unconditionally keeps a browser that lost it — cleared storage, a different
  * device — recognised again from its next contribution onwards.
  */
-export function useSubmitContribution(linkToken: string) {
+export function useSubmitContribution(linkToken: string, memoirId: string) {
   const queryClient = useQueryClient();
 
   return useMutation<ContributionReceipt, Error, Contribution>({
     mutationFn: (contribution) => submitContribution(linkToken, contribution),
     onSuccess: (receipt) => {
-      storeContributorToken(linkToken, receipt.participant_token);
+      storeContributorToken(memoirId, receipt.participant_token);
       void queryClient.invalidateQueries({
         queryKey: invitationKeys.mine(linkToken),
       });
     },
   });
+}
+
+/**
+ * Remembers a participant token issued somewhere other than the contribute form.
+ *
+ * `features/memoir` needs this: somebody who left memories months ago and now
+ * leaves a comment on the finished book is the **same person**, and the token
+ * that proves it is the one already stored here. A second copy of the storage
+ * key in the reader would be the bug this file's header describes arriving by
+ * a different route — the same human appearing twice in one memoir.
+ *
+ * A hook rather than re-exporting `storeContributorToken`, so the key and the
+ * "scoped to the memoir, not the link" rule stay in one place.
+ */
+export function useRememberContributor(memoirId: string) {
+  return useCallback(
+    (token: string | null) => {
+      // Null is the owner commenting, who has a real account. Handing them a
+      // second, weaker credential is exactly what the backend refuses to do.
+      if (token) storeContributorToken(memoirId, token);
+    },
+    [memoirId],
+  );
 }
 
 /**

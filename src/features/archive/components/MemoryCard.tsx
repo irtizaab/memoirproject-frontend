@@ -98,8 +98,27 @@ export function MemoryCard({ memory }: { memory: Memory }) {
           </ul>
         )}
 
+        {/*
+          Whose memory this is, and whether it came from somebody else.
+
+          The owner's own entries read "You" rather than their own name, which
+          is what a person expects to see above something they wrote. A
+          contribution keeps its sender's name and is marked as sent, so the
+          two are distinguishable at a glance without a badge — the thing that
+          matters when reviewing what has arrived.
+
+          `is_owner`, not a name comparison: a contributor who types the
+          owner's name is still a contributor.
+        */}
         <p className="mt-auto pt-2 font-sans text-xs text-ink-faint">
-          {memory.contributor_name}
+          {memory.is_owner ? (
+            "You"
+          ) : (
+            <>
+              {memory.contributor_name}
+              <span className="text-ink-faint"> · sent in</span>
+            </>
+          )}
         </p>
       </div>
     </Link>

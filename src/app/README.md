@@ -21,12 +21,13 @@ A page with a `fetch` call, a URL, or business logic in it belongs in `src/featu
 `(app)` is a **route group** — parenthesised, so it adds a layout without adding a URL segment.
 `src/app/(app)/archive/page.tsx` serves `/archive`, not `/app/archive`.
 
-Two routes sit outside it on purpose:
+Three routes sit outside it on purpose:
 
 | Route | Why it has no app chrome |
 | --- | --- |
 | `/onboarding` | Reached before an account exists, so there is nowhere to navigate to. |
 | `/j/[token]` | A contributor. They have no account and never will, so the signed-in nav would be a set of dead ends. |
+| `/m/[token]` | A reader of the finished memoir. Same reason — and it is also the only screen wider than one column, which `(app)`'s centred `max-w-5xl` could not hold. |
 
 ## Server and client components
 

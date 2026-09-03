@@ -1,0 +1,355 @@
+/*
+ * The reader's geometry, and nothing else.
+ *
+ * Colour is not declared here. Every value below is a length, a position or a
+ * typographic detail Tailwind cannot express — `::first-letter`, `writing-mode`,
+ * and the seven-column frame. Anything with a colour in it uses a token from
+ * `globals.css` through `var()`, which is consuming the theme rather than
+ * re-declaring it. `onboarding.module.css` used to keep its own palette and the
+ * two halves of the product drifted apart until it stopped.
+ *
+ * ---------------------------------------------------------------------------
+ * The one rule the whole layout exists to keep
+ * ---------------------------------------------------------------------------
+ * `.frame` is a FIXED total width and `.page` is offset from its left edge by a
+ * constant. So collapsing the contents rail cannot move the prose one pixel:
+ * the freed space becomes gutter, never measure. A reader who hides the
+ * contents mid-sentence does not lose their line.
+ *
+ * The four columns, left to right:
+ *
+ *   rail      gutter   measure        mgap  margin    cgap  comments
+ *   contents           the prose            artifacts       the conversation
+ *                                           + sources
+ *
+ * The two right-hand lanes are separate because they have different lifespans.
+ * The margin is the book's apparatus and is sealed at publication. The comment
+ * lane grows for decades. Forty comments must never push a photograph away
+ * from the paragraph it belongs to.
+ */
+
+.frame {
+  --rail: 200px;
+  --gutter: 40px;
+  --measure: 680px;
+  --mgap: 44px;
+  --marginw: 190px;
+  --cgap: 20px;
+  --commentw: 200px;
+
+  position: relative;
+  width: calc(
+    var(--rail) + var(--gutter) + var(--measure) + var(--mgap) +
+      var(--marginw) + var(--cgap) + var(--commentw)
+  );
+  margin: 0 auto;
+  padding-bottom: 8rem;
+}
+
+/* The masthead spans the same seven columns, so its rules line up with the
+   page's. It carries the variables itself because it is not inside `.frame`. */
+.masthead {
+  --rail: 200px;
+  --gutter: 40px;
+  --measure: 680px;
+  --mgap: 44px;
+  --marginw: 190px;
+  --cgap: 20px;
+  --commentw: 200px;
+
+  width: calc(
+    var(--rail) + var(--gutter) + var(--measure) + var(--mgap) +
+      var(--marginw) + var(--cgap) + var(--commentw)
+  );
+  margin: 0 auto;
+}
+
+/* ------------------------------------------------------------------ contents */
+
+.rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--rail);
+  padding-top: 3.5rem;
+}
+
+.railBody {
+  transition: opacity var(--step);
+}
+
+.railCollapsed .railBody {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.railStrip {
+  position: absolute;
+  left: 0;
+  top: 3.5rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--step);
+  writing-mode: vertical-rl;
+  padding: 14px 6px;
+  border-left: 1px solid var(--rule);
+}
+
+.railCollapsed .railStrip {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------- the page */
+
+/*
+ * The offset parent for both lanes. Every `top` the layout pass writes is
+ * measured against this box, so nothing between it and a lane item may be
+ * positioned.
+ */
+.page {
+  position: relative;
+  width: var(--measure);
+  margin-left: calc(var(--rail) + var(--gutter));
+  padding-top: 3.5rem;
+}
+
+/* A drop cap opens a chapter. Once — a second one is a typographic error. */
+.drop::first-letter {
+  float: left;
+  font-size: 64px;
+  line-height: 0.82;
+  font-weight: 400;
+  padding: 6px 10px 0 0;
+  margin-top: 2px;
+}
+
+/*
+ * The gutter numeral: the citation key and the durable deep link, one mark.
+ * In the left gutter rather than the text, so the prose carries nothing.
+ */
+.pnum {
+  position: absolute;
+  left: -30px;
+  top: 7px;
+  width: 22px;
+  text-align: right;
+  opacity: 0.55;
+  transition: opacity var(--step), color var(--step);
+}
+
+.para:hover .pnum {
+  opacity: 1;
+}
+
+/* The comment mark, in the gap between the prose and the margin. */
+.cmark {
+  position: absolute;
+  left: calc(100% + 11px);
+  top: 4px;
+  width: 22px;
+  height: 22px;
+  line-height: 20px;
+  text-align: center;
+  border: 1px solid transparent;
+  opacity: 0;
+  transition: opacity var(--step), color var(--step), border-color var(--step);
+}
+
+.para:hover .cmark,
+.cmark:focus-visible {
+  opacity: 1;
+  border-color: var(--rule);
+}
+
+.cmarkHas {
+  opacity: 0.75;
+  border-color: var(--rule);
+}
+
+/* ------------------------------------------------------------------- lanes */
+
+.lane {
+  position: absolute;
+  transition: opacity var(--step);
+}
+
+.laneMargin {
+  left: calc(100% + var(--mgap));
+  width: var(--marginw);
+  opacity: 0.62;
+}
+
+.page:hover .laneMargin {
+  opacity: 0.86;
+}
+
+.laneMargin:hover,
+.laneLit {
+  opacity: 1;
+}
+
+.laneComment {
+  left: calc(100% + var(--mgap) + var(--marginw) + var(--cgap));
+  width: var(--commentw);
+  opacity: 0.72;
+}
+
+.laneComment:hover,
+.laneComment.laneFocused {
+  opacity: 1;
+}
+
+/* The waveform standing in for a recording — bars, drawn with a gradient
+   rather than fifty elements. */
+.wave {
+  height: 30px;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--ink-faint) 0 2px,
+    transparent 2px 4px
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 12%,
+    black 88%,
+    transparent
+  );
+  opacity: 0.75;
+}
+
+/* -------------------------------------------------------- narrower desktop */
+
+@media (max-width: 1440px) {
+  .frame,
+  .masthead {
+    --rail: 176px;
+    --gutter: 34px;
+    --measure: 632px;
+    --mgap: 40px;
+    --marginw: 176px;
+    --cgap: 16px;
+    --commentw: 184px;
+  }
+}
+
+/*
+ * Below 1240 the comment lane folds back into the margin. The layout pass
+ * reads the same breakpoint and lays both out as one lane, so nothing overlaps.
+ */
+@media (max-width: 1240px) {
+  .frame,
+  .masthead {
+    --rail: 168px;
+    --gutter: 30px;
+    --measure: 600px;
+    --mgap: 38px;
+    --marginw: 210px;
+    --cgap: 0px;
+    --commentw: 0px;
+  }
+
+  .laneComment {
+    left: calc(100% + var(--mgap));
+    width: var(--marginw);
+  }
+}
+
+/* -------------------------------------------------------------- one column */
+
+/*
+ * Below 1000 the rail becomes a sheet and every lane item falls INLINE at its
+ * anchor. This is why the margin is anchored rather than a feed: the phone
+ * layout falls out of it instead of needing a second design.
+ */
+@media (max-width: 1000px) {
+  .frame,
+  .masthead {
+    width: 100%;
+    --measure: 100%;
+    --gutter: 0px;
+    --mgap: 0px;
+  }
+
+  .frame {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 40rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .rail {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 60;
+    width: 300px;
+    max-width: 86vw;
+    padding: 26px 24px;
+    overflow: auto;
+    background: var(--paper);
+    border-right: 1px solid var(--rule);
+    transform: translateX(-102%);
+    transition: transform var(--step);
+  }
+
+  .railOpen {
+    transform: none;
+  }
+
+  .railCollapsed .railBody {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .railStrip {
+    display: none;
+  }
+
+  .lane {
+    position: static !important;
+    width: 100%;
+    max-width: 26rem;
+    margin: 1.9rem auto 2.1rem;
+    opacity: 1;
+  }
+
+  .pnum {
+    position: static;
+    float: left;
+    width: auto;
+    margin-right: 10px;
+    text-align: left;
+    opacity: 0.6;
+  }
+
+  .cmark {
+    position: static;
+    float: right;
+    margin-left: 10px;
+    opacity: 0.75;
+    border-color: var(--rule);
+  }
+
+  .drop::first-letter {
+    font-size: 54px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .railBody,
+  .railStrip,
+  .lane,
+  .pnum,
+  .cmark,
+  .rail {
+    transition: none;
+  }
+}

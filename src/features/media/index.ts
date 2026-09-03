@@ -16,7 +16,11 @@ export {
 } from "@/features/media/components/VoiceRecorder";
 export { TranscriptReader } from "@/features/media/components/TranscriptReader";
 export { mediaAssetSchema, transcriptSchema } from "@/features/media/schemas";
-export { hasPendingTranscript } from "@/features/media/utils";
+export {
+  formatDuration,
+  hasPendingTranscript,
+  totalDuration,
+} from "@/features/media/utils";
 export { useAttachments, type Mode } from "@/features/media/useAttachments";
 export type {
   AssetKind,

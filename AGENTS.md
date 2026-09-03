@@ -24,7 +24,13 @@ update it when you change what that directory holds. The short version:
   names (`--paper`, `--seal`) and the shadcn names (`--background`, `--primary`) that the primitives
   consume. Never hard-code a hex value in a component or re-declare the palette in a CSS module —
   `features/onboarding/onboarding.module.css` used to, and the two halves of the product drifted
-  apart until it stopped. There is no dark mode, deliberately.
+  apart until it stopped. **Dark mode is nine re-picked values in that same file** and
+  nothing else — the shadcn contract is written in terms of the memoir names, so
+  redefining the names redefines every primitive. Never add a `dark:` utility to a
+  component; if something needs a dark value it needs a token. Note two of the nine
+  changed role rather than value: `--paper-deep` is *lighter* than the page in dark
+  (a raised card, not a hole), and `--seal` lifts to `#cf6a60` because `#7c1015` on a
+  near-black ground measures 1.71:1 and is unreadable as text.
 - Buttons and labels are **sentence case**. The tracked-out uppercase is reserved for the eyebrow
   above a page title (`.eyebrow`) and for quiet metadata (`.eyebrow-muted`), both defined in
   `globals.css`.
@@ -60,11 +66,13 @@ Run `npm run verify` (typecheck + lint + test) before considering work complete.
 /contributors    who is in it, and the share link     │ header, footer, session
 /billing         plan and storage meter               ┘ guard
 /j/[token]       a contributor — its own chrome, server-rendered
+/m/[token]       the finished memoir, opened by a view link — its own chrome,
+/m/[token]/[id]  server-rendered, four columns wide
 ```
 
 `src/app/(app)/` is a route group: parenthesised, so it adds a layout without adding a URL
-segment. `/onboarding` and `/j/[token]` sit outside it on purpose — one is reached before an
-account exists, the other by someone who will never have one.
+segment. `/onboarding`, `/j/[token]` and `/m/[token]` sit outside it on purpose — the first is
+reached before an account exists, the other two by people who will never have one.
 
 **Onboarding ends at `/archive`.** It used to end at five mock screens — a fake dashboard, a fake
 AI-drafting spinner, hardcoded chapters, a fake publish — while the real app was reachable by
@@ -104,6 +112,36 @@ revokes its object URLs — anything else uploads a recording the person believe
 
 Do not send `kind`. The backend derives it from what the memory holds; the request schemas have no
 such field, and the response schema still does.
+
+**The reader is a book, and it is addressed by a link.** `/m/[token]` resolves a **view**-scoped
+`memoir_link` — a different scope from the contribute link behind `/j/[token]`, so a link posted in
+a family group chat cannot be used to write into the archive, and a link that lets somebody add
+memories does not also hand out the finished book. Both pages are server-rendered because a link
+token needs no browser-held credential.
+
+Three things about `features/memoir` that are load-bearing rather than stylistic, and are explained
+at length in its README:
+
+- **A chapter is assembled from many people, so every clause is traceable.** `block_source` carries
+  character offsets into the paragraph. The prose itself carries no marks; a numeral in the left
+  gutter is both the citation key and the durable deep link, and hovering a credit underlines the
+  exact words it fathered. This is what makes the "never fabricate" rule checkable by a reader
+  rather than merely asserted.
+- **Two right-hand lanes, not one.** The margin (photographs and sources) is sealed with the
+  memoir; the comment lane grows forever. Sharing a lane would let ten years of comments push a
+  photograph away from the paragraph that earned it.
+- **The frame is a fixed width and the prose column is offset by a constant**, so collapsing the
+  contents rail cannot reflow a single line. Making the column a fraction of the frame breaks this
+  and will not show up in a screenshot.
+
+Anchoring by character offset is only safe because **publication is immutable** — the text can
+never move out from under an offset. If a published chapter ever becomes editable, every anchor in
+that feature needs rebasing.
+
+**A comment is left by a `memoir_participant`, never a user.** `features/memoir` borrows
+`useRememberContributor` from `features/invitation` so the token is stored under the same
+memoir-scoped key. A second copy would put one human in a memoir twice — the exact bug
+`contributorStorage.ts` exists to prevent.
 
 **Transcripts arrive by polling, and the polling stops by itself.** Every voice note is transcribed
 automatically by the backend. `useMemories` and `useMyContributions` set `refetchInterval` from

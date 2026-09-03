@@ -2,8 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ImageIcon, Mic, Plus, Type } from "lucide-react";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,8 +59,8 @@ export function ContributeForm({
   token: string;
   invitation: Invitation;
 }) {
-  const participantToken = useContributorToken(token);
-  const submit = useSubmitContribution(token);
+  const participantToken = useContributorToken(invitation.memoir_id, token);
+  const submit = useSubmitContribution(token, invitation.memoir_id);
   const { data: mine } = useMyContributions(token, participantToken);
 
   const attachments = useAttachments(["text"]);
@@ -72,6 +72,45 @@ export function ContributeForm({
     resolver: zodResolver(contributionFormSchema),
     defaultValues: { display_name: "", body_text: "" },
   });
+
+  /*
+    The name already on record, taken from what they have added before.
+
+    No new endpoint needed: every memory carries the name it was attributed to,
+    and this list is theirs by definition. Null on a first visit, which is
+    exactly when the field should be empty.
+  */
+  const knownName = mine?.[0]?.contributor_name ?? null;
+
+  /*
+    Fill the name in, once, when it arrives.
+
+    The form used to start empty every visit and the backend used to throw the
+    typed name away — so a returning contributor retyped a name that was then
+    ignored, which is why their old name kept appearing. Both halves are fixed:
+    the backend honours it now, and this stops asking for something it already
+    knows.
+
+    Guarded on `isDirty` so the answer landing mid-typing cannot overwrite what
+    somebody is in the middle of writing.
+  */
+  const { reset: resetForm, formState: nameFormState, getValues } = form;
+  useEffect(() => {
+    if (!knownName || nameFormState.isDirty) return;
+    if (getValues("display_name")) return;
+    resetForm({ display_name: knownName, body_text: getValues("body_text") });
+  }, [knownName, nameFormState.isDirty, resetForm, getValues]);
+
+  /*
+    Shown only when they change a name that was already stored, because that is
+    the only case where anything already sent is affected.
+
+    `useWatch` rather than `form.watch()`: the latter returns a fresh function
+    each render, which the React Compiler cannot memoize, so it bails out of
+    optimising this whole component. Same value, one that can be tracked.
+  */
+  const typedName = useWatch({ control: form.control, name: "display_name" });
+  const renaming = Boolean(knownName) && typedName.trim() !== knownName;
 
   const busy = isUploading || submit.isPending;
 
@@ -226,6 +265,20 @@ export function ContributeForm({
           {form.formState.errors.display_name && (
             <p className="font-sans text-sm text-seal">
               {form.formState.errors.display_name.message}
+            </p>
+          )}
+          {/*
+            Said before they save, not after.
+
+            The name is stored against the person rather than on each memory,
+            so changing it changes what is shown above everything they have
+            already sent. That is the right behaviour — it is the same person
+            and this is their name — but it is not what somebody editing a
+            single field would assume, so it is spelled out.
+          */}
+          {renaming && (
+            <p className="font-sans text-sm text-ink-soft">
+              This also updates the name shown on what you have already added.
             </p>
           )}
         </div>

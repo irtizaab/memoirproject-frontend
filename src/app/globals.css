@@ -122,11 +122,71 @@
 }
 
 /*
- * No dark mode. The product is paper: an ivory sheet with ink on it. A dark
- * variant would not be the same object, and every colour here is chosen for
- * one background. If a dark theme is ever wanted it needs its own design pass,
- * not an inverted palette.
+ * ---------------------------------------------------------------------------
+ * Dark mode — the same object under a lamp, not an inverted palette.
+ * ---------------------------------------------------------------------------
+ *
+ * This file used to refuse dark mode outright, on the grounds that the product
+ * is paper and every colour was chosen for one background. That reasoning was
+ * right, and it is why the nine values below were re-picked one at a time
+ * rather than run through a filter. The brief for them: a well-printed book
+ * read by a low lamp. Still warm, never a cool grey, never pure black.
+ *
+ * Three things needed real decisions rather than a darker number:
+ *
+ *   --paper-deep swaps role. In light it is a shade *deeper* than the page,
+ *   for a card sitting on it. In dark a raised surface has to be *lighter*
+ *   than the ground, or the card reads as a hole.
+ *
+ *   --seal has to lift. #7c1015 on a near-black ground measures 1.71:1 — an
+ *   eyebrow set in it would be unreadable. Lifted to #cf6a60 it reaches
+ *   5.19:1, clearing AA as text, and it is still sealing wax: wax under
+ *   lamplight *is* warmer and brighter than wax in daylight.
+ *
+ *   --primary-foreground is left alone, and follows --paper into the dark.
+ *   That flips the primary button from ivory-on-oxblood to deep-ink-on-warm-
+ *   red. Deliberate: on the lifted red, deep ink measures 5.19:1 and ivory
+ *   only 2.98:1, so inverting a button's own contrast to preserve its daytime
+ *   look would be choosing the wrong thing.
+ *
+ * Measured, not estimated. Every text token clears 4.5:1 on the dark ground:
+ * ink 15.46, ink-soft 7.08, ink-faint 4.82, seal 5.19.
+ *
+ * Everything else follows for free. The shadcn contract above is written in
+ * terms of these nine names, so redefining the names redefines every
+ * primitive with them — one place, as the file has always intended.
+ *
+ * The two blocks below hold identical values and cannot be merged: one answers
+ * the operating system, the other answers an explicit choice, and CSS has no
+ * way to say both in one selector. The guard on the first is what lets a
+ * person who wants light keep it on a machine set to dark.
  */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #16130f;
+    --paper-deep: #1f1b16;
+    --ink: #f0eade;
+    --ink-soft: #a89f90;
+    --ink-faint: #8a8173;
+    --seal: #cf6a60;
+    --seal-dark: #e08479;
+    --seal-wash: #2b1b18;
+    --rule: #332d25;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #16130f;
+  --paper-deep: #1f1b16;
+  --ink: #f0eade;
+  --ink-soft: #a89f90;
+  --ink-faint: #8a8173;
+  --seal: #cf6a60;
+  --seal-dark: #e08479;
+  --seal-wash: #2b1b18;
+  --rule: #332d25;
+}
 
 @layer base {
   * {

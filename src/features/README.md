@@ -16,14 +16,20 @@ Copy `example/` to start a new one.
 | `billing/` | The owner: their plan and storage meter | client |
 | `media/` | Both owner and contributor: getting a file into storage | client |
 | `invitation/` | A contributor, who has no account and never will | **both** |
+| `memoir/` | A reader of the finished book, who has no account either | **both** |
 | `example/` | Nobody — reference scaffolding, kept as the pattern to copy | both |
 
-`invitation/` is the only one with a server data path, because `GET /j/{token}`
-is the only endpoint that needs no credential. Everything else is authenticated
-with a Supabase token held in the browser, which a server render cannot reach.
+`invitation/` and `memoir/` are the two with a server data path, and for the
+same reason: they are addressed by a **link token** rather than by a session,
+so there is no browser-held credential a server render would have to wait for.
+Everything else is authenticated with a Supabase token held in the browser,
+which a server render cannot reach.
 
 The dependency direction worth preserving: `archive`, `contributors` and
-`billing` all read `account`; `archive` and `invitation` both use `media`.
+`billing` all read `account`; `archive` and `invitation` both use `media`;
+`memoir` reads `invitation` for one thing only — the participant token, which
+identifies a person who left memories months ago and is now leaving a comment.
+A second copy of that storage key would put one human in a memoir twice.
 Nothing depends on `onboarding` — it is where an account begins, not something
 the rest of the app consults.
 

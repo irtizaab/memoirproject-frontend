@@ -11,6 +11,7 @@ export { InvitationCard } from "@/features/invitation/components/InvitationCard"
 export {
   invitationKeys,
   useContributorToken,
+  useRememberContributor,
   useMyContributions,
   useSubmitContribution,
 } from "@/features/invitation/hooks";

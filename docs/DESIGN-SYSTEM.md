@@ -64,9 +64,16 @@ Nine values. There is no tenth.
   in ink-soft. A destructive or irreversible action is oxblood, same as a normal primary action —
   the weight comes from the copy, not a red alert colour.
 - No pure black (`#000`) and no pure white (`#fff`) anywhere.
-- There is **no dark mode.** Paper does not have a dark mode. (`src/app/globals.css` still ships
-  stock shadcn neutral tokens and a `.dark` block — those belong to the rest of the app and are
-  irrelevant here. This feature scopes its own tokens to a `.shell` root.)
+- **Dark mode exists, and it is nine re-picked values — not an inversion.** The brief for it is
+  the same object under a lamp: still warm, never a cool grey, never pure black. Two of the nine
+  are not simply darker versions of themselves. `--paper-deep` swaps role, because a raised card
+  has to be *lighter* than the ground in dark or it reads as a hole. And `--seal` lifts from
+  `#7c1015` to `#cf6a60`, because the daylight oxblood measures 1.71:1 against a near-black page
+  and an eyebrow set in it would be invisible — wax under lamplight genuinely is warmer and
+  brighter. The one knock-on: the primary button becomes deep-ink-on-warm-red rather than
+  ivory-on-oxblood, because on the lifted red deep ink measures 5.19:1 and ivory only 2.98:1.
+  Every text token clears AA on the dark ground (ink 15.46, ink-soft 7.08, ink-faint 4.82,
+  seal 5.19). All nine live in `src/app/globals.css` and nowhere else; see the comment there.
 
 ---
 

@@ -46,7 +46,37 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${spectral.variable} ${inter.variable} h-full antialiased`}
+      /*
+        The theme script below writes `data-theme` onto this element before
+        React hydrates, so the server-rendered markup and the DOM React finds
+        will differ by exactly that attribute. This tells React that is
+        expected here and nowhere else.
+      */
+      suppressHydrationWarning
     >
+      <head>
+        {/*
+          Applies the saved theme before the first paint.
+
+          It has to be inline, and it has to be here: React runs after the page
+          is drawn, so anything that set the theme in a component would show one
+          frame of ivory to somebody who chose dark — on every navigation. That
+          flash is the thing that makes a theme toggle feel broken.
+
+          No value means "follow the operating system", which the media query in
+          `globals.css` already answers, so the script sets nothing in that case.
+          Wrapped in try/catch because reading localStorage throws outright in
+          some privacy modes, and a theme is not worth a blank page.
+
+          The key is duplicated from `lib/theme/store.ts` because a script in
+          the document head cannot import.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("memoir.theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}`,
+          }}
+        />
+      </head>
       {/* Stays a server component. Only `Providers` crosses into the browser. */}
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <Providers>{children}</Providers>

@@ -26,6 +26,18 @@ export const memorySchema = z.object({
   created_at: z.string(),
   contributor_name: z.string(),
   contributor_relationship: z.string(),
+  /**
+   * Which participant left it, and whether that is the owner.
+   *
+   * The id rather than the name is what groups one person's memories together
+   * on the contributors screen — two people who share a name are two people,
+   * and the whole merge flow exists because that is not a hypothetical.
+   *
+   * `is_owner` for the same reason: a contributor who happens to type the
+   * owner's name is still a contributor.
+   */
+  participant_id: z.uuid(),
+  is_owner: z.boolean(),
   assets: z.array(mediaAssetSchema),
 });
 

@@ -11,13 +11,20 @@
  * keys and invalidation live in one place.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 
 import {
+  attachAssets,
   createMemory,
   deleteMemory,
   getMemory,
   listMemories,
+  removeAsset,
   updateMemory,
 } from "@/features/archive/api";
 import type { Memory, MemoryCreate } from "@/features/archive/schemas";
@@ -34,6 +41,27 @@ export const archiveKeys = {
   memory: (memoryId: string) =>
     [...archiveKeys.all, "memory", memoryId] as const,
 };
+
+/**
+ * Refresh both places a memory is cached: the archive list, and the entry the
+ * detail page reads.
+ *
+ * Both, every time. Invalidating only the list is what made an edit made from
+ * the detail page appear on the grid and not on the page it was made from —
+ * the same data, cached under two keys, and only one of them refreshed.
+ */
+function invalidateMemory(
+  queryClient: QueryClient,
+  memoirId: string | null,
+  memoryId: string,
+): void {
+  void queryClient.invalidateQueries({
+    queryKey: archiveKeys.memories(memoirId ?? "none"),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: archiveKeys.memory(memoryId),
+  });
+}
 
 /**
  * Every memory in the memoir.
@@ -82,21 +110,57 @@ export function useCreateMemory(memoirId: string | null) {
   });
 }
 
-/** Edits a memory in place. */
+/**
+ * Edits a memory in place.
+ *
+ * `happened_on` is in the variables because the date is editable — the API
+ * function has always accepted it, and leaving it out of this type is what
+ * made the date unreachable from the UI.
+ */
 export function useUpdateMemory(memoirId: string | null) {
   const queryClient = useQueryClient();
 
   return useMutation<
     Memory,
     Error,
-    { memoryId: string; title?: string | null; body_text?: string | null }
+    {
+      memoryId: string;
+      title?: string | null;
+      body_text?: string | null;
+      happened_on?: string | null;
+    }
   >({
     mutationFn: ({ memoryId, ...patch }) => updateMemory(memoryId, patch),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: archiveKeys.memories(memoirId ?? "none"),
-      });
-    },
+    onSuccess: (_memory, { memoryId }) =>
+      invalidateMemory(queryClient, memoirId, memoryId),
+  });
+}
+
+/** Adds uploaded photographs or recordings to a memory that already exists. */
+export function useAttachAssets(memoirId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<Memory, Error, { memoryId: string; assetIds: string[] }>({
+    mutationFn: ({ memoryId, assetIds }) => attachAssets(memoryId, assetIds),
+    onSuccess: (_memory, { memoryId }) =>
+      invalidateMemory(queryClient, memoirId, memoryId),
+  });
+}
+
+/**
+ * Removes one photograph or recording.
+ *
+ * Not optimistic, for the same reason `useDeleteMemory` is not: this destroys
+ * a file. A thumbnail that disappears and then returns because the request
+ * failed is worse than one that takes a moment to go.
+ */
+export function useRemoveAsset(memoirId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<Memory, Error, { memoryId: string; assetId: string }>({
+    mutationFn: ({ memoryId, assetId }) => removeAsset(memoryId, assetId),
+    onSuccess: (_memory, { memoryId }) =>
+      invalidateMemory(queryClient, memoirId, memoryId),
   });
 }
 

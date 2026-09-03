@@ -46,6 +46,19 @@ export const contributorsOverviewSchema = z.object({
   participants: z.array(contributorSchema),
 });
 
+/**
+ * What merging two entries did.
+ *
+ * `memories_moved` is reported so the confirmation can state the real number
+ * rather than a hopeful one — "4 memories moved" reads very differently from
+ * silence when the owner expected four.
+ */
+export const mergeResultSchema = z.object({
+  participant_id: z.uuid(),
+  memories_moved: z.number().int(),
+});
+
 export type ShareLink = z.infer<typeof shareLinkSchema>;
 export type Contributor = z.infer<typeof contributorSchema>;
 export type ContributorsOverview = z.infer<typeof contributorsOverviewSchema>;
+export type MergeResult = z.infer<typeof mergeResultSchema>;

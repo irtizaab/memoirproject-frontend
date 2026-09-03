@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -10,7 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { useActiveMemoir } from "@/features/account";
 import { useDeleteMemory, useMemory } from "@/features/archive/hooks";
 import { formatHappenedOn, labelForKind } from "@/features/archive/utils";
-import { TranscriptReader } from "@/features/media";
+import { TranscriptReader, totalDuration } from "@/features/media";
 import { isApiError } from "@/lib/api/errors";
 
 /**
@@ -68,6 +68,15 @@ export function MemoryDetail({ memoryId }: { memoryId: string }) {
   const recordings = memory.assets.filter((asset) => asset.kind === "audio");
   const happenedOn = formatHappenedOn(memory.happened_on);
 
+  // "3 recordings · 4:12", or just the count when any length is unknown.
+  const length = totalDuration(recordings);
+  const recordingsSummary = [
+    recordings.length === 1 ? "1 recording" : `${recordings.length} recordings`,
+    length,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div className="space-y-10">
       <Link
@@ -85,31 +94,74 @@ export function MemoryDetail({ memoryId }: { memoryId: string }) {
           <>
             {happenedOn && <span className="block">{happenedOn}</span>}
             <span className="mt-1 block text-ink-faint">
-              Added by {memory.contributor_name}
+              {memory.is_owner ? (
+                "Added by you"
+              ) : (
+                <>
+                  Sent in by{" "}
+                  <Link
+                    href={`/contributors/${memory.participant_id}`}
+                    className="underline decoration-rule underline-offset-4 hover:text-seal"
+                  >
+                    {memory.contributor_name}
+                  </Link>
+                </>
+              )}
             </span>
           </>
+        }
+        action={
+          /* Beside the title rather than down beside delete. Editing is the
+             ordinary thing to want here; delete is not, and the two should not
+             sit together looking like a pair of equals. */
+          <Link
+            href={`/archive/${memory.id}/edit`}
+            className={buttonVariants({ variant: "outline" })}
+          >
+            <Pencil aria-hidden />
+            Edit
+          </Link>
         }
       />
 
       {recordings.length > 0 && (
-        <section className="space-y-6">
-          <h2 className="font-heading text-xl font-normal">
-            {recordings.length === 1 ? "The recording" : "The recordings"}
-          </h2>
-          <ul className="space-y-6">
-            {recordings.map((asset) => (
-              <li
-                key={asset.id}
-                className="space-y-3 rounded-lg border border-border bg-paper-deep p-5"
-              >
-                {/* No caption track. A transcript is not captions: it is not
-                    timed to the audio the way a <track> expects, and it reads
-                    below as prose somebody can actually follow. */}
-                <audio controls src={asset.url ?? ""} className="w-full" />
-                <TranscriptReader transcript={asset.transcript} />
-              </li>
-            ))}
-          </ul>
+        <section>
+          {/* Same disclosure pattern as TranscriptReader: a real <details>, so
+              it is keyboard-operable, announced by screen readers, and found by
+              the browser's own in-page search — with no state and no
+              JavaScript. A memory holding six recordings should open as a page
+              you can read, not a stack of players. */}
+          <details className="group">
+            <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1 select-none">
+              <h2 className="font-heading text-xl font-normal transition-colors group-hover:text-seal">
+                {recordings.length === 1 ? "The recording" : "The recordings"}
+              </h2>
+              <span className="eyebrow-muted">
+                <span aria-hidden className="mr-1 inline-block group-open:hidden">
+                  ▸
+                </span>
+                <span aria-hidden className="mr-1 hidden group-open:inline-block">
+                  ▾
+                </span>
+                {recordingsSummary}
+              </span>
+            </summary>
+
+            <ul className="mt-6 space-y-6">
+              {recordings.map((asset) => (
+                <li
+                  key={asset.id}
+                  className="space-y-3 rounded-lg border border-border bg-paper-deep p-5"
+                >
+                  {/* No caption track. A transcript is not captions: it is not
+                      timed to the audio the way a <track> expects, and it reads
+                      below as prose somebody can actually follow. */}
+                  <audio controls src={asset.url ?? ""} className="w-full" />
+                  <TranscriptReader transcript={asset.transcript} />
+                </li>
+              ))}
+            </ul>
+          </details>
         </section>
       )}
 
@@ -138,23 +190,57 @@ export function MemoryDetail({ memoryId }: { memoryId: string }) {
       )}
 
       {photos.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="font-heading text-xl font-normal">
-            {photos.length === 1 ? "The photograph" : "The photographs"}
-          </h2>
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {photos.map((asset) => (
-              <li key={asset.id}>
-                {/* A signed, expiring URL from a private bucket. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={asset.url ?? ""}
-                  alt="A photograph from this memory"
-                  className="w-full rounded-lg border border-border object-contain"
-                />
-              </li>
-            ))}
-          </ul>
+        <section>
+          <details className="group">
+            <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-2 select-none">
+              <h2 className="font-heading text-xl font-normal transition-colors group-hover:text-seal">
+                {photos.length === 1 ? "The photograph" : "The photographs"}
+              </h2>
+              <span className="eyebrow-muted">
+                <span aria-hidden className="mr-1 inline-block group-open:hidden">
+                  ▸
+                </span>
+                <span aria-hidden className="mr-1 hidden group-open:inline-block">
+                  ▾
+                </span>
+                {photos.length === 1 ? "1 photograph" : `${photos.length} photographs`}
+              </span>
+
+              {/* The preview: real thumbnails, so the summary line says what is
+                  inside rather than only how much. Hidden once open — the full
+                  images are directly below and the strip would be a second,
+                  worse copy of them. */}
+              <span className="flex flex-wrap items-center gap-2 group-open:hidden">
+                {photos.slice(0, 5).map((asset) => (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    key={asset.id}
+                    src={asset.url ?? ""}
+                    alt=""
+                    aria-hidden
+                    className="size-10 rounded border border-border object-cover"
+                  />
+                ))}
+                {photos.length > 5 && (
+                  <span className="eyebrow-muted">+{photos.length - 5}</span>
+                )}
+              </span>
+            </summary>
+
+            <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+              {photos.map((asset) => (
+                <li key={asset.id}>
+                  {/* A signed, expiring URL from a private bucket. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={asset.url ?? ""}
+                    alt="A photograph from this memory"
+                    className="w-full rounded-lg border border-border object-contain"
+                  />
+                </li>
+              ))}
+            </ul>
+          </details>
         </section>
       )}
 

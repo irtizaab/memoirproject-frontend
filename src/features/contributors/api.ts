@@ -6,14 +6,18 @@ import { apiRequest, type ApiRequestCaching } from "@/lib/api/client";
 import { authHeaders } from "@/lib/supabase/client";
 import {
   contributorsOverviewSchema,
+  mergeResultSchema,
   shareLinkSchema,
   type ContributorsOverview,
+  type MergeResult,
   type ShareLink,
 } from "@/features/contributors/schemas";
 
 const ENDPOINTS = {
   contributors: (memoirId: string) => `/memoirs/${memoirId}/contributors`,
   reissue: (memoirId: string) => `/memoirs/${memoirId}/link/reissue`,
+  merge: (memoirId: string, loserId: string, winnerId: string) =>
+    `/memoirs/${memoirId}/contributors/${loserId}/merge-into/${winnerId}`,
 } as const;
 
 type RequestOptions = ApiRequestCaching & { signal?: AbortSignal };
@@ -29,6 +33,31 @@ export async function listContributors(
     headers: await authHeaders(),
     schema: contributorsOverviewSchema,
     cache: "no-store",
+    ...options,
+  });
+}
+
+/**
+ * Records that two entries in the contributors list are one person.
+ *
+ * The same human on a second device arrives as a second participant, because
+ * identity is a token held in one browser. This is how the owner says so.
+ *
+ * Nothing is matched on names, here or on the backend: both ids are named
+ * explicitly, because two people genuinely share a name and no rule could tell
+ * two cousins called Ali apart. Not reversible — the UI says so first.
+ */
+export async function mergeContributors(
+  memoirId: string,
+  loserId: string,
+  winnerId: string,
+  options: RequestOptions = {},
+): Promise<MergeResult> {
+  return apiRequest({
+    path: ENDPOINTS.merge(memoirId, loserId, winnerId),
+    method: "POST",
+    headers: await authHeaders(),
+    schema: mergeResultSchema,
     ...options,
   });
 }

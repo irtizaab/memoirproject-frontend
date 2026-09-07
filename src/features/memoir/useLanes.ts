@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef } from "react";
  *
  * The two lanes are laid out **separately**, which is the whole reason there
  * are two: a comment thread growing can push other comments down, and must
- * never push a photograph away from the paragraph that earned it. Below 1240px
+ * never push a photograph away from the paragraph that earned it. Below 1340px
  * they fold into one lane and share a single de-collision pass — the same
  * breakpoint the stylesheet uses, read here so the two cannot disagree.
  *
@@ -32,8 +32,11 @@ const MARGIN_GAP = 22;
 /** Comment cards sit closer: they are a conversation, not separate exhibits. */
 const COMMENT_GAP = 14;
 
-const FOLDED = "(max-width: 1240px)";
-const INLINE = "(max-width: 1000px)";
+// These two must match `reader.module.css` exactly. The stylesheet decides
+// where the lanes are; this decides how they are packed, and a breakpoint that
+// disagrees by a pixel puts a photograph on top of a comment.
+const FOLDED = "(max-width: 1340px)";
+const INLINE = "(max-width: 1040px)";
 
 export function useLanes(key: string) {
   const rootRef = useRef<HTMLDivElement | null>(null);

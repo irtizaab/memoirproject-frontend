@@ -11,24 +11,25 @@ import {
 /**
  * Leaving a comment, or replying to one.
  *
- * The name is asked for, and it is asked for every time rather than being
- * assumed — the same decision the contributor form makes, for the same reason:
- * the person reading a memoir on a shared family laptop is not always the same
- * person. It is prefilled from whoever last commented in this session, so
- * answering twice in a row costs nothing.
+ * It used to ask for a name here, every time. The door asks now — once, before
+ * the memoir opens — so this says whose it will be rather than asking again.
+ * The person reading a memoir on a shared family laptop is still handled: they
+ * are whoever opened it, and opening it again is how somebody else becomes the
+ * person leaving reflections.
  *
  * Validation lives in `commentFormSchema`, not here. A component renders what
  * `react-hook-form` reports; it does not decide what counts as valid.
  */
 export function CommentComposer({
-  defaultName,
+  readerName,
   replying,
   pending,
   error,
   onCancel,
   onSubmit,
 }: {
-  defaultName: string;
+  /** Whoever opened the memoir. Shown, not asked for. */
+  readerName: string;
   replying?: boolean;
   pending: boolean;
   error: string | null;
@@ -41,7 +42,7 @@ export function CommentComposer({
     formState: { errors },
   } = useForm<CommentFormValues>({
     resolver: zodResolver(commentFormSchema),
-    defaultValues: { body: "", display_name: defaultName },
+    defaultValues: { body: "" },
   });
 
   return (
@@ -58,17 +59,13 @@ export function CommentComposer({
         <p className="font-sans text-xs text-seal">{errors.body.message}</p>
       )}
 
-      <input
-        {...register("display_name")}
-        placeholder="Your name"
-        aria-label="Your name"
-        className="block w-full border-0 border-b border-rule bg-transparent pb-1 font-sans text-xs text-foreground placeholder:italic placeholder:text-ink-faint focus:border-seal focus:outline-none"
-      />
-      {errors.display_name && (
-        <p className="font-sans text-xs text-seal">
-          {errors.display_name.message}
-        </p>
-      )}
+      {/*
+        Who this will be from, stated rather than asked. A reflection in a
+        memoir is always signed, and the signature was settled at the door.
+      */}
+      <p className="font-sans text-xs text-ink-faint">
+        Leaving this as <span className="text-ink-soft">{readerName}</span>
+      </p>
 
       {/*
         A failed comment says so in words. There is no colour for error in this

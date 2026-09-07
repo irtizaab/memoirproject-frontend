@@ -12,6 +12,7 @@ export {
   invitationKeys,
   useContributorToken,
   useRememberContributor,
+  useRememberContributorFor,
   useMyContributions,
   useSubmitContribution,
 } from "@/features/invitation/hooks";

@@ -8,11 +8,15 @@
 
 import { z } from "zod";
 
-import { apiRequest, type ApiRequestCaching } from "@/lib/api/client";
+import { apiDownload, apiRequest, type ApiRequestCaching } from "@/lib/api/client";
 import { authHeaders } from "@/lib/supabase/client";
 import {
+  assemblyResultSchema,
+  memoirPublicationSchema,
   memoryCreateSchema,
   memorySchema,
+  type AssemblyResult,
+  type MemoirPublication,
   type Memory,
   type MemoryCreate,
 } from "@/features/archive/schemas";
@@ -23,6 +27,19 @@ const ENDPOINTS = {
   assets: (memoryId: string) => `/memories/${memoryId}/assets`,
   asset: (memoryId: string, assetId: string) =>
     `/memories/${memoryId}/assets/${assetId}`,
+} as const;
+
+/**
+ * The memoir as a whole, rather than the memories in it.
+ *
+ * Kept apart from `ENDPOINTS` above because they answer different questions —
+ * one is "what has been collected", the other is "what becomes of it".
+ */
+const BOOK = {
+  assemble: (memoirId: string) => `/memoirs/${memoirId}/assemble`,
+  publish: (memoirId: string) => `/memoirs/${memoirId}/publish`,
+  passphrase: (memoirId: string) => `/memoirs/${memoirId}/passphrase`,
+  export: (memoirId: string) => `/memoirs/${memoirId}/export.pdf`,
 } as const;
 
 type RequestOptions = ApiRequestCaching & { signal?: AbortSignal };
@@ -178,5 +195,90 @@ export async function getMemory(
     schema: memorySchema,
     cache: "no-store",
     ...options,
+  });
+}
+
+/* -------------------------------------------------------------------------
+ * The book
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Turn everything in the archive into chapters.
+ *
+ * Owner only, and re-runnable while the memoir is a draft: the owner adds
+ * memories and runs it again, and the whole book is rebuilt from what is there
+ * now. Once published it is refused — every reflection in a sealed memoir is
+ * anchored to characters in text that can never move.
+ */
+export async function assembleMemoir(
+  memoirId: string,
+  options: RequestOptions = {},
+): Promise<AssemblyResult> {
+  return apiRequest({
+    path: BOOK.assemble(memoirId),
+    method: "POST",
+    headers: await authHeaders(),
+    schema: assemblyResultSchema,
+    ...options,
+  });
+}
+
+/**
+ * Seal the memoir and protect it with a passphrase.
+ *
+ * The most irreversible request in the product. The response carries the view
+ * token and never the passphrase — the owner chose it and passes it on
+ * themselves.
+ */
+export async function publishMemoir(
+  memoirId: string,
+  passphrase: string,
+  options: RequestOptions = {},
+): Promise<MemoirPublication> {
+  return apiRequest({
+    path: BOOK.publish(memoirId),
+    method: "POST",
+    body: { passphrase },
+    headers: await authHeaders(),
+    schema: memoirPublicationSchema,
+    ...options,
+  });
+}
+
+/**
+ * Replace the passphrase.
+ *
+ * There is no route that reads the old one back, because nothing in the
+ * building can. Replacing locks out everyone who was told the previous one,
+ * which is what somebody asking for this actually wants.
+ */
+export async function replacePassphrase(
+  memoirId: string,
+  passphrase: string,
+  options: RequestOptions = {},
+): Promise<undefined> {
+  return apiRequest({
+    path: BOOK.passphrase(memoirId),
+    method: "PUT",
+    body: { passphrase },
+    headers: await authHeaders(),
+    schema: z.undefined(),
+    ...options,
+  });
+}
+
+/**
+ * The memoir as a PDF.
+ *
+ * `apiDownload` rather than `apiRequest`: the response is a file, and the rule
+ * that nothing unvalidated enters the app is kept by bytes on their way to a
+ * download being outside it rather than exempt from it.
+ */
+export async function exportMemoirPdf(
+  memoirId: string,
+): Promise<{ blob: Blob; filename: string | null }> {
+  return apiDownload({
+    path: BOOK.export(memoirId),
+    headers: await authHeaders(),
   });
 }

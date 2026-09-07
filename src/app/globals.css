@@ -21,6 +21,8 @@
  */
 
 @theme inline {
+  --shadow-lift: var(--lift);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
@@ -29,6 +31,7 @@
      the rest, use the shadcn utility so the primitives and the pages agree. */
   --color-paper: var(--paper);
   --color-paper-deep: var(--paper-deep);
+  --color-paper-raised: var(--paper-raised);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-ink-faint: var(--ink-faint);
@@ -68,16 +71,37 @@
 }
 
 :root {
-  /* ---------- the palette ---------- */
-  --paper: #fbf9f4;
-  --paper-deep: #f3efe5;
+  /* ---------- the palette ----------
+     Ten values now, and the tenth is the interesting one.
+
+     This used to be nine, with the page itself the lightest thing on screen
+     and `--paper-deep` a shade *below* it for a card. That is a real way to
+     build a paper product and it is not the one the reader mockups describe:
+     there, the ground is a warm cream and a chapter sits on a sheet that is
+     lighter than it, with a soft shadow underneath. A card cannot be lighter
+     than the page when the page is already white.
+
+     So the ground moved down and `--paper-raised` was added above it. Dark
+     mode has always worked this way — its comment below explains why a raised
+     surface has to be lighter than its ground or it reads as a hole — and
+     light mode now agrees with it rather than being its mirror image.
+
+     `--seal` is untouched. The mockups draw their accent in terracotta and
+     this product's is sealing wax; the cards, the rounding and the cream are
+     the parts worth taking. */
+  --paper: #f3eee5;
+  --paper-deep: #eae2d4;
+  --paper-raised: #fffdf9;
   --ink: #1c1a17;
-  --ink-soft: #706a60;
-  --ink-faint: #a69e91;
+  --ink-soft: #6b6459;
+  /* Darkened by a hair against the deeper ground, so metadata set in it keeps
+     the contrast it had on the old near-white page rather than quietly losing
+     a tenth of it. */
+  --ink-faint: #9c9182;
   --seal: #7c1015;
   --seal-dark: #5e0c10;
-  --seal-wash: #faf3f1;
-  --rule: #dfd8c9;
+  --seal-wash: #f7ece8;
+  --rule: #ded5c4;
 
   /* ---------- typefaces ----------
      Loaded by `app/layout.tsx`. Spectral carries names, headings and anything
@@ -98,9 +122,12 @@
   /* ---------- the shadcn contract, in memoir terms ---------- */
   --background: var(--paper);
   --foreground: var(--ink);
-  --card: var(--paper-deep);
+  /* The raised sheet, not the recessed one. Every `bg-card` in the app — the
+     memory tiles, the book panel, the reader's page — is a thing sitting on
+     the ground rather than a well cut into it. */
+  --card: var(--paper-raised);
   --card-foreground: var(--ink);
-  --popover: var(--paper);
+  --popover: var(--paper-raised);
   --popover-foreground: var(--ink);
   --primary: var(--seal);
   --primary-foreground: var(--paper);
@@ -115,10 +142,24 @@
   --input: var(--rule);
   --ring: var(--seal);
 
-  /* Soft, not sharp. The mockups round cards, tiles, inputs and buttons by a
-     few pixels — enough to feel made rather than machined, not enough to read
-     as a web app. */
-  --radius: 4px;
+  /* Soft, not sharp. The reader mockups round a card by rather more than the
+     4px this started at — enough that a chapter reads as a sheet of paper with
+     cut corners — so the base moved to 8px and the scale above carries it:
+     `rounded-lg` for an input, `rounded-2xl` for a card, and `rounded-full`
+     for the pills in the reader's chrome. */
+  --radius: 8px;
+
+  /* ---------- the one shadow ----------
+     A card in the mockups is lifted rather than outlined: a hairline, and
+     underneath it a shadow soft enough to read as paper on paper rather than
+     as a drop shadow on a web page. Two layers, because one blurred layer
+     alone makes a card look like it is floating an inch off the table — the
+     tight first layer is what puts it back down.
+
+     Declared once here for the same reason the palette is: a shadow invented
+     per component is how eight cards end up with six different elevations. */
+  --lift:
+    0 1px 2px rgb(74 52 32 / 0.05), 0 22px 44px -30px rgb(74 52 32 / 0.5);
 }
 
 /*
@@ -134,9 +175,10 @@
  *
  * Three things needed real decisions rather than a darker number:
  *
- *   --paper-deep swaps role. In light it is a shade *deeper* than the page,
- *   for a card sitting on it. In dark a raised surface has to be *lighter*
- *   than the ground, or the card reads as a hole.
+ *   --paper-raised is lighter than the ground in both modes now. Dark forced
+ *   the point first — a raised surface darker than its ground reads as a hole
+ *   — and light used to get away with the opposite only because the page was
+ *   white and nothing could be lighter than it. It is not any more.
  *
  *   --seal has to lift. #7c1015 on a near-black ground measures 1.71:1 — an
  *   eyebrow set in it would be unreadable. Lifted to #cf6a60 it reaches
@@ -166,6 +208,7 @@
   :root:not([data-theme="light"]) {
     --paper: #16130f;
     --paper-deep: #1f1b16;
+    --paper-raised: #221d17;
     --ink: #f0eade;
     --ink-soft: #a89f90;
     --ink-faint: #8a8173;
@@ -179,6 +222,7 @@
 :root[data-theme="dark"] {
   --paper: #16130f;
   --paper-deep: #1f1b16;
+  --paper-raised: #221d17;
   --ink: #f0eade;
   --ink-soft: #a89f90;
   --ink-faint: #8a8173;

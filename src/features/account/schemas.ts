@@ -24,6 +24,23 @@ export const memoirSummarySchema = z.object({
   created_at: z.string(),
   /** Null when the share link has been revoked and not yet reissued. */
   link_token: z.string().nullable(),
+
+  /**
+   * How many chapters the archive has been assembled into, and therefore the
+   * answer to "is there a book yet". The dashboard shows nothing that opens
+   * the reader until this is above zero, because a memoir with no chapters
+   * opens onto an empty page.
+   */
+  chapter_count: z.number().int().default(0),
+
+  /** When it was sealed, or null while it is still a draft. */
+  published_at: z.string().nullable().default(null),
+
+  /**
+   * The token that opens the reader — distinct from `link_token` above, which
+   * collects memories. Null until publication issues it.
+   */
+  view_token: z.string().nullable().default(null),
 });
 
 /** Mirrors `AccountOverview` — the body of `GET /me`. */

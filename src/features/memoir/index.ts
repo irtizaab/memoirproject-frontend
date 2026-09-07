@@ -13,6 +13,7 @@
 
 export { BookCover } from "@/features/memoir/components/BookCover";
 export { ChapterReader } from "@/features/memoir/components/ChapterReader";
+export { MemoirGate } from "@/features/memoir/components/MemoirGate";
 export { ReaderFrame } from "@/features/memoir/components/ReaderFrame";
 export {
   memoirKeys,
@@ -21,6 +22,7 @@ export {
 } from "@/features/memoir/hooks";
 export type {
   Block,
+  ReaderSession,
   BlockSource,
   Chapter,
   ChapterSummary,

@@ -15,7 +15,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useRememberContributor } from "@/features/invitation";
 import { listThreads, postComment } from "@/features/memoir/api";
 import type {
   CommentCreate,
@@ -41,39 +40,39 @@ export const memoirKeys = {
 export function useThreads(
   token: string,
   chapterId: string,
+  reader: string | null,
   initial: CommentThread[],
 ) {
   return useQuery({
     queryKey: memoirKeys.threads(chapterId),
-    queryFn: () => listThreads(token, chapterId),
+    queryFn: () => listThreads(token, chapterId, reader),
     initialData: initial,
   });
 }
 
 /**
- * Leaves a comment, and remembers who left it.
+ * Leaves a comment.
  *
- * `useRememberContributor` writes the participant token into the **same**
- * browser storage `features/invitation` uses, keyed on the memoir. That is the
- * point of borrowing it: somebody who sent memories months ago and comments
- * today is one person, and a second copy of that key would put them in the
- * memoir twice.
+ * It used to also remember who left it, by storing the participant token that
+ * came back on the receipt. That moved to the door: identity is established
+ * once, when the memoir is opened, and `MemoirGate` is what writes it down
+ * through `useRememberContributor` — the same storage `features/invitation`
+ * uses, keyed on the memoir, so somebody who sent memories months ago and
+ * reads today is one person rather than two.
  *
- * The token comes back on every response, not only the first, so storing it
- * unconditionally re-recognises a browser that lost it.
+ * What is left here is the mutation and the invalidation, which is all a
+ * comment ever needed to be.
  */
 export function useLeaveComment(
   token: string,
   chapterId: string,
-  memoirId: string,
+  reader: string | null,
 ) {
   const queryClient = useQueryClient();
-  const remember = useRememberContributor(memoirId);
 
   return useMutation<CommentReceipt, Error, CommentCreate>({
-    mutationFn: (comment) => postComment(token, chapterId, comment),
-    onSuccess: (receipt) => {
-      remember(receipt.participant_token);
+    mutationFn: (comment) => postComment(token, chapterId, reader, comment),
+    onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: memoirKeys.threads(chapterId),
       });

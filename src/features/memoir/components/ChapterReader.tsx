@@ -3,7 +3,6 @@
 import { Fragment, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
-import { useContributorToken } from "@/features/invitation";
 import { CommentComposer } from "@/features/memoir/components/CommentComposer";
 import { CommentThreadCard } from "@/features/memoir/components/CommentThreadCard";
 import {
@@ -54,21 +53,30 @@ type Draft =
  */
 export function ChapterReader({
   token,
+  reader,
+  readerName,
   reading,
   chapter,
 }: {
   token: string;
+  /** The session this page was rendered with. Says who is reading. */
+  reader: string;
+  /** Their name, as given at the door. Printed above a reflection, never asked. */
+  readerName: string;
   reading: MemoirReading;
   chapter: Chapter;
 }) {
-  const { data: threads = [] } = useThreads(token, chapter.id, chapter.threads);
-  const leave = useLeaveComment(token, chapter.id, reading.memoir_id);
-  const participantToken = useContributorToken(reading.memoir_id, token);
+  const { data: threads = [] } = useThreads(
+    token,
+    chapter.id,
+    reader,
+    chapter.threads,
+  );
+  const leave = useLeaveComment(token, chapter.id, reader);
 
   const [focusedThread, setFocusedThread] = useState<string | null>(null);
   const [litSource, setLitSource] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [name, setName] = useState("");
   const [copied, setCopied] = useState(false);
   const [selection, setSelection] = useState<{
     blockId: string;
@@ -102,13 +110,10 @@ export function ChapterReader({
 
   const submit = (values: CommentFormValues) => {
     if (!draft) return;
-    setName(values.display_name);
 
     leave.mutate(
       {
         body: values.body,
-        display_name: values.display_name,
-        participant_token: participantToken ?? undefined,
         ...(draft.kind === "reply"
           ? { thread_id: draft.threadId }
           : {
@@ -139,15 +144,31 @@ export function ChapterReader({
 
   return (
     <main ref={rootRef} className={styles.page}>
-      <header className="mb-12">
-        <p className="eyebrow-muted flex gap-4">
+      {/*
+        A chapter opens the way a printed one does: an ornament, the number and
+        the years it covers, the title, and a rule under it. Centred, which is
+        the one place in the reader that is — the prose underneath is set flush
+        left, because centred body text is unreadable and centred openings are
+        how a book says a new part has started.
+      */}
+      <header className="mb-11 text-center">
+        <span
+          aria-hidden
+          className="mx-auto flex size-9 items-center justify-center rounded-xl border border-border bg-muted font-heading text-sm text-seal"
+        >
+          ❦
+        </span>
+        <p className="eyebrow mt-5 flex justify-center gap-4">
           <span>Chapter {roman(chapter.ordinal + 1)}</span>
           {chapterYears(chapter) && <span>{chapterYears(chapter)}</span>}
         </p>
-        <h2 className="mt-4 font-heading text-[clamp(28px,4vw,38px)] leading-tight font-normal tracking-tight text-balance">
+        <h2 className="mx-auto mt-3.5 max-w-[14em] font-heading text-[clamp(28px,4vw,40px)] leading-tight font-normal tracking-tight text-balance">
           {chapter.title}
         </h2>
-        <span aria-hidden className="mt-6 block h-px w-14 bg-rule" />
+        <span
+          aria-hidden
+          className="relative mx-auto mt-7 block h-px w-52 bg-rule after:absolute after:top-1/2 after:left-1/2 after:size-1.5 after:-translate-x-1/2 after:-translate-y-1/2 after:rotate-45 after:border after:border-seal after:bg-accent"
+        />
       </header>
 
       {chapter.blocks.map((block) => {
@@ -161,14 +182,30 @@ export function ChapterReader({
         }
 
         if (block.kind === "pull") {
+          // Editorial rather than remembered — the assembly step writes these
+          // to mark something the archive disagreed about — so it carries no
+          // sources and says why it is set apart instead of leaving a reader
+          // to wonder who said it.
           return (
-            <p
+            <aside
               key={block.id}
               data-block={block.id}
-              className="my-8 border-y border-border py-6 font-heading text-xl leading-relaxed font-light italic text-foreground"
+              className="my-9 rounded-2xl border border-border bg-muted/60 px-6 py-5"
             >
-              {block.text}
-            </p>
+              <p className="eyebrow flex items-center gap-2.5">
+                <span
+                  aria-hidden
+                  className="inline-block size-1.5 rounded-full bg-seal"
+                />
+                Where accounts differ
+              </p>
+              <p className="mt-3.5 font-heading text-xl leading-relaxed font-light italic text-foreground">
+                {block.text}
+              </p>
+              <p className="mt-4 border-t border-border pt-3 font-sans text-xs text-ink-faint">
+                Both accounts are kept, and neither has been corrected.
+              </p>
+            </aside>
           );
         }
 
@@ -266,7 +303,7 @@ export function ChapterReader({
                   {draft?.kind === "reply" && draft.threadId === thread.id && (
                     <CommentComposer
                       replying
-                      defaultName={name}
+                      readerName={readerName}
                       pending={leave.isPending}
                       error={leave.error?.message ?? null}
                       onCancel={() => setDraft(null)}
@@ -294,7 +331,7 @@ export function ChapterReader({
                     : "On the words you chose"}
                 </p>
                 <CommentComposer
-                  defaultName={name}
+                  readerName={readerName}
                   pending={leave.isPending}
                   error={leave.error?.message ?? null}
                   onCancel={() => setDraft(null)}
@@ -312,10 +349,19 @@ export function ChapterReader({
         would shred the prose.
       */}
       {chapter.told_by.length > 0 && (
-        <footer className="mt-14 border-t border-border pt-4 font-sans text-xs leading-relaxed text-muted-foreground">
-          <span className="eyebrow-muted mb-2 block">Told by</span>
-          {toldBy(chapter.told_by)} · {chapter.memory_count}{" "}
-          {chapter.memory_count === 1 ? "memory" : "memories"}
+        <footer className="mt-14 text-center">
+          <p className="font-heading text-2xl italic text-foreground">
+            End of chapter {roman(chapter.ordinal + 1).toLowerCase()}
+          </p>
+          <span
+            aria-hidden
+            className="mx-auto mt-3.5 block h-0.5 w-14 rounded-full bg-seal/60"
+          />
+          <p className="mx-auto mt-6 max-w-prose font-sans text-xs leading-relaxed text-ink-faint">
+            <span className="eyebrow-muted mb-2 block">Told by</span>
+            {toldBy(chapter.told_by)} · {chapter.memory_count}{" "}
+            {chapter.memory_count === 1 ? "memory" : "memories"}
+          </p>
         </footer>
       )}
 

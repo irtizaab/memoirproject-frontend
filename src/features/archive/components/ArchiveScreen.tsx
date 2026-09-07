@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { buttonVariants } from "@/components/ui/button";
 import { useActiveMemoir } from "@/features/account";
+import { BookPanel } from "@/features/archive/components/BookPanel";
 import { InviteBanner } from "@/features/archive/components/InviteBanner";
 import { MemoryCard } from "@/features/archive/components/MemoryCard";
 import { useMemories } from "@/features/archive/hooks";
@@ -61,10 +62,21 @@ export function ArchiveScreen() {
           </>
         }
         action={
-          <Link href="/archive/new" className={buttonVariants()}>
-            <Plus aria-hidden />
-            New memory
-          </Link>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Search is here rather than in the header, because it searches
+                this memoir and the header belongs to the account. */}
+            <Link
+              href="/search"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              <Search aria-hidden />
+              Search
+            </Link>
+            <Link href="/archive/new" className={buttonVariants()}>
+              <Plus aria-hidden />
+              New memory
+            </Link>
+          </div>
         }
       />
 
@@ -78,6 +90,8 @@ export function ArchiveScreen() {
           {memoir.never_forget}
         </blockquote>
       )}
+
+      <BookPanel memoir={memoir ?? null} />
 
       <InviteBanner linkToken={memoir?.link_token ?? null} />
 

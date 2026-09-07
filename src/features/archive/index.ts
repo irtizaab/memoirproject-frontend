@@ -6,6 +6,7 @@
  */
 
 export { ArchiveScreen } from "@/features/archive/components/ArchiveScreen";
+export { BookPanel } from "@/features/archive/components/BookPanel";
 /* Exported for `features/contributors`, which lists one person's memories with
    the same tile the archive uses. Two tiles that were meant to look identical
    is how one of them quietly stops matching. */
@@ -15,15 +16,24 @@ export { MemoryDetail } from "@/features/archive/components/MemoryDetail";
 export { MemoryEditor } from "@/features/archive/components/MemoryEditor";
 export {
   archiveKeys,
+  useAssembleMemoir,
   useAttachAssets,
   useCreateMemory,
   useDeleteMemory,
+  useExportMemoir,
   useMemories,
   useMemory,
+  usePublishMemoir,
   useRemoveAsset,
+  useReplacePassphrase,
   useUpdateMemory,
 } from "@/features/archive/hooks";
-export type { Memory, MemoryKind } from "@/features/archive/schemas";
+export type {
+  AssemblyResult,
+  MemoirPublication,
+  Memory,
+  MemoryKind,
+} from "@/features/archive/schemas";
 export {
   archiveEyebrow,
   archiveTitle,

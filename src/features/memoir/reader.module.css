@@ -29,13 +29,17 @@
  */
 
 .frame {
-  --rail: 200px;
-  --gutter: 40px;
-  --measure: 680px;
-  --mgap: 44px;
-  --marginw: 190px;
-  --cgap: 20px;
-  --commentw: 200px;
+  --rail: 190px;
+  --gutter: 36px;
+  --measure: 648px;
+  /* Wider than the gap it looks like, because the sheet under the prose
+     overhangs the measure by `--pad` on each side (see `.page::before`). The
+     margin lane starts outside that overhang, not against the text. */
+  --mgap: 96px;
+  --marginw: 168px;
+  --cgap: 22px;
+  --commentw: 286px;
+  --pad: 54px;
 
   position: relative;
   width: calc(
@@ -49,13 +53,13 @@
 /* The masthead spans the same seven columns, so its rules line up with the
    page's. It carries the variables itself because it is not inside `.frame`. */
 .masthead {
-  --rail: 200px;
-  --gutter: 40px;
-  --measure: 680px;
-  --mgap: 44px;
-  --marginw: 190px;
-  --cgap: 20px;
-  --commentw: 200px;
+  --rail: 190px;
+  --gutter: 36px;
+  --measure: 648px;
+  --mgap: 96px;
+  --marginw: 168px;
+  --cgap: 22px;
+  --commentw: 286px;
 
   width: calc(
     var(--rail) + var(--gutter) + var(--measure) + var(--mgap) +
@@ -112,6 +116,36 @@
   width: var(--measure);
   margin-left: calc(var(--rail) + var(--gutter));
   padding-top: 3.5rem;
+  padding-bottom: 3rem;
+}
+
+/*
+ * The sheet the chapter is printed on.
+ *
+ * A pseudo-element rather than a background on `.page` itself, because the two
+ * lanes are positioned against this box and padding on it would move every
+ * `top` the layout pass writes. The sheet therefore overhangs the measure by
+ * `--pad` on each side while the box stays exactly the width of the text —
+ * which is also why `--mgap` above is measured from the text and not from the
+ * paper.
+ *
+ * Colour comes from the theme, as everything in this file does: `--card` is the
+ * raised surface, and it is lighter than the ground in both light and dark.
+ */
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(var(--pad) * -1);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 22px;
+  box-shadow: var(--lift);
+}
+
+/* Above the sheet. The lanes sit outside it and need no z-index of their own. */
+.page > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* A drop cap opens a chapter. Once — a second one is a typographic error. */
@@ -221,16 +255,17 @@
 
 /* -------------------------------------------------------- narrower desktop */
 
-@media (max-width: 1440px) {
+@media (max-width: 1560px) {
   .frame,
   .masthead {
-    --rail: 176px;
-    --gutter: 34px;
-    --measure: 632px;
-    --mgap: 40px;
-    --marginw: 176px;
-    --cgap: 16px;
-    --commentw: 184px;
+    --rail: 172px;
+    --gutter: 28px;
+    --measure: 608px;
+    --mgap: 86px;
+    --marginw: 150px;
+    --cgap: 18px;
+    --commentw: 258px;
+    --pad: 46px;
   }
 }
 
@@ -238,16 +273,17 @@
  * Below 1240 the comment lane folds back into the margin. The layout pass
  * reads the same breakpoint and lays both out as one lane, so nothing overlaps.
  */
-@media (max-width: 1240px) {
+@media (max-width: 1340px) {
   .frame,
   .masthead {
-    --rail: 168px;
-    --gutter: 30px;
-    --measure: 600px;
-    --mgap: 38px;
-    --marginw: 210px;
+    --rail: 162px;
+    --gutter: 24px;
+    --measure: 576px;
+    --mgap: 80px;
+    --marginw: 248px;
     --cgap: 0px;
     --commentw: 0px;
+    --pad: 40px;
   }
 
   .laneComment {
@@ -263,13 +299,20 @@
  * anchor. This is why the margin is anchored rather than a feed: the phone
  * layout falls out of it instead of needing a second design.
  */
-@media (max-width: 1000px) {
+@media (max-width: 1040px) {
   .frame,
   .masthead {
     width: 100%;
     --measure: 100%;
     --gutter: 0px;
     --mgap: 0px;
+    /* The sheet stops overhanging: at this width there is nothing either side
+       of the prose for it to overhang into. */
+    --pad: 20px;
+  }
+
+  .page::before {
+    border-radius: 18px;
   }
 
   .frame {

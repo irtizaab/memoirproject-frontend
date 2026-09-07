@@ -18,16 +18,26 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 
+import { accountKeys } from "@/features/account";
 import {
+  assembleMemoir,
   attachAssets,
   createMemory,
   deleteMemory,
+  exportMemoirPdf,
   getMemory,
   listMemories,
+  publishMemoir,
   removeAsset,
+  replacePassphrase,
   updateMemory,
 } from "@/features/archive/api";
-import type { Memory, MemoryCreate } from "@/features/archive/schemas";
+import type {
+  AssemblyResult,
+  MemoirPublication,
+  Memory,
+  MemoryCreate,
+} from "@/features/archive/schemas";
 import { hasPendingTranscript } from "@/features/media";
 
 /**
@@ -212,5 +222,86 @@ export function useMemory(memoirId: string | null, memoryId: string) {
       hasPendingTranscript(query.state.data ? [query.state.data] : undefined)
         ? 5000
         : false,
+  });
+}
+
+/* -------------------------------------------------------------------------
+ * The book
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Assembles the archive into chapters.
+ *
+ * Invalidates `GET /me`, not the memory list: nothing about the memories
+ * changed, and what the dashboard needs to hear is that `chapter_count` moved
+ * off zero — which is what unlocks reading the book and exporting it.
+ */
+export function useAssembleMemoir(memoirId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<AssemblyResult, Error, void>({
+    mutationFn: () => {
+      if (!memoirId) throw new Error("No memoir is loaded yet.");
+      return assembleMemoir(memoirId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: accountKeys.me() });
+    },
+  });
+}
+
+/**
+ * Seals the memoir behind a passphrase.
+ *
+ * Also invalidates `GET /me`, which is where the view token appears — the
+ * address the owner is about to send to their family.
+ */
+export function usePublishMemoir(memoirId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<MemoirPublication, Error, string>({
+    mutationFn: (passphrase) => {
+      if (!memoirId) throw new Error("No memoir is loaded yet.");
+      return publishMemoir(memoirId, passphrase);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: accountKeys.me() });
+    },
+  });
+}
+
+/** Replaces the passphrase. Nothing cached changes — only what opens the book. */
+export function useReplacePassphrase(memoirId: string | null) {
+  return useMutation<undefined, Error, string>({
+    mutationFn: (passphrase) => {
+      if (!memoirId) throw new Error("No memoir is loaded yet.");
+      return replacePassphrase(memoirId, passphrase);
+    },
+  });
+}
+
+/**
+ * Downloads the memoir as a PDF.
+ *
+ * A mutation rather than a query because it is an action a person takes, and
+ * because caching a file nobody asked for twice would be a megabyte held in
+ * memory for no reason. The blob URL is revoked as soon as the click has
+ * happened — the browser has the bytes by then.
+ */
+export function useExportMemoir(memoirId: string | null) {
+  return useMutation<void, Error, void>({
+    mutationFn: async () => {
+      if (!memoirId) throw new Error("No memoir is loaded yet.");
+
+      const { blob, filename } = await exportMemoirPdf(memoirId);
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename ?? "memoir.pdf";
+      link.click();
+
+      URL.revokeObjectURL(url);
+    },
   });
 }

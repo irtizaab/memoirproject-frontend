@@ -12,6 +12,7 @@ The owner's view of their memoir: what has been collected, and adding more.
 | `components/MemoryComposer.tsx` | `/archive/new` |
 | `components/MemoryCard.tsx` | One memory in the grid |
 | `components/InviteBanner.tsx` | "Make it a shared story" |
+| `components/BookPanel.tsx` | Assemble it, seal it, read it, export it |
 
 ## Media comes first
 
@@ -25,8 +26,26 @@ A memory with a photograph or a voice note is **two steps**, in this order:
 That ordering is not arbitrary — a file needs somewhere to go before there is a
 row to attach it to. `MemoryComposer.onSubmit` is a sequence for this reason.
 
+## The book panel
+
+`BookPanel` is the only place in the signed-in app that points at `/m/[token]`,
+and the only place a memoir can be sealed. It is the pair to `InviteBanner`:
+one collects material, the other turns it into something.
+
+"View the memoir" and "Export a PDF" are **absent, not disabled**, until
+`chapter_count` is above zero. A disabled button is a promise with a reason the
+person has to guess at; an absent one is answered by the sentence beside it.
+
+Sealing takes a passphrase and is permanent — afterwards the text can never
+change, which is what lets every reflection stay anchored to the passage it was
+about. There is no route that reads a passphrase back, because nothing in the
+building can: it is a scrypt hash, and replacing it is the only move.
+
 ## Things that would be product bugs
 
+- **A percentage on the book panel.** Assembly returns four counts and they are
+  facts about what the archive turned into, not a score against a total nobody
+  has. This is the screen most tempted by it.
 - **No progress indicators.** No "your memoir is 40% complete", no streaks, no
   badges, no re-engagement nudges. Counts appear only as plain facts
   ("12 held here"). The empty state is the one most tempted by this and gets

@@ -20,17 +20,21 @@ update it when you change what that directory holds. The short version:
 - `src/components/ui/` holds shadcn primitives with no domain knowledge. Feature-aware components
   live in the feature folder. `src/components/layout/` holds the app shell used by `app/(app)/`.
 - **The theme lives in `src/app/globals.css` and nowhere else.** Paper, ink, seal red, the hairline
-  rule colour, the two typefaces, and the 4px radius are declared there once, under both the memoir
-  names (`--paper`, `--seal`) and the shadcn names (`--background`, `--primary`) that the primitives
-  consume. Never hard-code a hex value in a component or re-declare the palette in a CSS module —
-  `features/onboarding/onboarding.module.css` used to, and the two halves of the product drifted
-  apart until it stopped. **Dark mode is nine re-picked values in that same file** and
+  rule colour, the two typefaces, the radius and the one shadow are declared there once, under both
+  the memoir names (`--paper`, `--seal`) and the shadcn names (`--background`, `--primary`) that the
+  primitives consume. Never hard-code a hex value in a component or re-declare the palette in a CSS
+  module — `features/onboarding/onboarding.module.css` used to, and the two halves of the product
+  drifted apart until it stopped. **Dark mode is ten re-picked values in that same file** and
   nothing else — the shadcn contract is written in terms of the memoir names, so
   redefining the names redefines every primitive. Never add a `dark:` utility to a
-  component; if something needs a dark value it needs a token. Note two of the nine
-  changed role rather than value: `--paper-deep` is *lighter* than the page in dark
-  (a raised card, not a hole), and `--seal` lifts to `#cf6a60` because `#7c1015` on a
-  near-black ground measures 1.71:1 and is unreadable as text.
+  component; if something needs a dark value it needs a token.
+
+  Two of the ten are worth knowing. `--paper-raised` is the card surface and is **lighter than the
+  ground in both modes**: dark forced the point first (a raised surface darker than its ground reads
+  as a hole) and light used to get away with the opposite only because the page was white. And
+  `--seal` lifts to `#cf6a60` in dark because `#7c1015` on a near-black ground measures 1.71:1 and
+  is unreadable as text. `--lift` is the one shadow; a card invented with its own elevation is how
+  eight cards end up with six.
 - Buttons and labels are **sentence case**. The tracked-out uppercase is reserved for the eyebrow
   above a page title (`.eyebrow`) and for quiet metadata (`.eyebrow-muted`), both defined in
   `globals.css`.
@@ -63,11 +67,13 @@ Run `npm run verify` (typecheck + lint + test) before considering work complete.
 /archive         the owner's memories, as summaries    ┐
 /archive/[id]    one memory in full                    │
 /archive/new     the composer                          │ (app) route group:
-/contributors    who is in it, and the share link     │ header, footer, session
-/billing         plan and storage meter               ┘ guard
+/contributors    who is in it, and the share link      │ header, footer,
+/billing         plan and storage meter                │ session guard
+/search          the whole memoir, searched            ┘
 /j/[token]       a contributor — its own chrome, server-rendered
-/m/[token]       the finished memoir, opened by a view link — its own chrome,
-/m/[token]/[id]  server-rendered, four columns wide
+/m/[token]       the finished memoir, opened by a view link AND a passphrase —
+/m/[token]/[id]  its own chrome, server-rendered, four columns wide
+/m/[token]/search  the same search, from inside the book
 ```
 
 `src/app/(app)/` is a route group: parenthesised, so it adds a layout without adding a URL
@@ -112,6 +118,26 @@ revokes its object URLs — anything else uploads a recording the person believe
 
 Do not send `kind`. The backend derives it from what the memory holds; the request schemas have no
 such field, and the response schema still does.
+
+**The book is behind a door.** A view link is made to be forwarded, and every
+forward is a copy of the whole memoir — so the link is half a credential. The
+other half is a passphrase the owner sets when they seal it, and
+`POST /r/{token}/open` exchanges the two for a **reader session** kept in a
+cookie (not `localStorage`: `/m/[token]` is server-rendered, and a server render
+cannot see `localStorage`). The owner is recognised by their Supabase session
+and let through without either.
+
+Identity is taken **once, at the door**, which is why `commentCreateSchema`
+carries no name: a person used to be able to read a whole family's memoir as
+nobody at all and be asked who they were only if they had something to say.
+Every way of failing to open one answers 404 and the gate says one sentence for
+all of them — "that link is real but your passphrase is wrong" is what turns a
+forwarded link into something worth guessing at.
+
+**The archive is where the book is made.** `BookPanel` on `/archive` assembles
+the memoir into chapters, seals it, links to it, and exports the PDF. Nothing
+that opens the reader appears until `chapter_count` is above zero — absent, not
+disabled, because a disabled button is a promise with a reason to guess at.
 
 **The reader is a book, and it is addressed by a link.** `/m/[token]` resolves a **view**-scoped
 `memoir_link` — a different scope from the contribute link behind `/j/[token]`, so a link posted in

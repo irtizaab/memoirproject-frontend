@@ -194,42 +194,97 @@ export const commentCreateSchema = z
     start_offset: z.number().int().min(0).optional(),
     end_offset: z.number().int().positive().optional(),
     thread_id: z.uuid().optional(),
-    display_name: z
-      .string()
-      .trim()
-      .min(1, "Say who this is from.")
-      .max(120, "Keep the name under 120 characters.")
-      .optional(),
-    participant_token: z.string().optional(),
+    // No name, and the backend accepts none. Who this is from was settled at
+    // the door — see `readerSessionSchema` — and a name here would be a second,
+    // weaker way to claim to be somebody.
   })
   .refine((value) => Boolean(value.block_id) !== Boolean(value.thread_id), {
     message: "A comment is about a passage or a reply to one, never both.",
   });
 
-/** The composer form: what a reader types, and their name. */
+/**
+ * The composer form: what a reader types, and nothing else.
+ *
+ * It used to ask for a name every time. That moved to the door, where it is
+ * asked once — so a reflection is signed by whoever opened the memoir, and a
+ * person cannot read the whole book as nobody at all and be asked who they are
+ * only if they have something to say.
+ */
 export const commentFormSchema = z.object({
   body: z
     .string()
     .trim()
     .min(1, "Write something first.")
     .max(4000, "Keep a comment under 4000 characters."),
-  display_name: z
-    .string()
-    .trim()
-    .min(1, "Say who this is from.")
-    .max(120, "Keep the name under 120 characters."),
 });
 
 /**
- * What comes back after commenting: the thread, and the token that makes this
- * person the same person next time.
+ * What comes back after commenting: the thread as it now stands.
  *
- * `participant_token` is null for the owner, who has a real account and must
- * not be handed a second, weaker credential.
+ * It used to carry a `participant_token` as well — the thing that made somebody
+ * the same person next time. That is issued at the door now, along with
+ * everything else about who they are.
  */
 export const commentReceiptSchema = z.object({
   thread: commentThreadSchema,
+});
+
+/* -------------------------------------------------------------------------
+ * The door
+ * ------------------------------------------------------------------------- */
+
+/**
+ * What a reader says to get in.
+ *
+ * The passphrase and the name are what the form asks for. `participant_token`
+ * is not typed by anybody: it is whatever this browser already holds from
+ * contributing months ago, so the person reading is recognised as the person
+ * who sent the memories rather than appearing in the memoir twice.
+ *
+ * Every field is optional because the owner sends none of them — their bearer
+ * token is the whole request.
+ */
+export const readerOpenSchema = z.object({
+  passphrase: z.string().max(256).optional(),
+  display_name: z.string().trim().max(120).optional(),
+  relationship: z.string().trim().max(120).optional(),
+  participant_token: z.string().optional(),
+});
+
+/** Mirrors the backend's `ReaderSession`. */
+export const readerSessionSchema = z.object({
+  /** Goes in `X-Reader-Token` on every request after this one. */
+  reader_token: z.string(),
+  display_name: z.string(),
+  is_owner: z.boolean(),
+  /**
+   * Which memoir was opened. Not needed to read it — the link says that — but
+   * the browser keys "who I am here" on the memoir rather than on the link, so
+   * that reissuing a link does not turn every contributor into a stranger.
+   * This is the only way the reader's side learns it.
+   */
+  memoir_id: z.uuid(),
+  /**
+   * Null for the owner, whose participant row is forbidden from carrying one.
+   * For everybody else it is the same token the contribute side uses, so one
+   * browser is one person across both.
+   */
   participant_token: z.string().nullable(),
+});
+
+/** What the gate's form collects, before it is sent. */
+export const gateFormSchema = z.object({
+  passphrase: z.string().trim().min(1, "The passphrase is needed to open this."),
+  display_name: z
+    .string()
+    .trim()
+    .min(1, "Say who you are — every reflection in a memoir is signed.")
+    .max(120, "Keep the name under 120 characters."),
+  relationship: z
+    .string()
+    .trim()
+    .max(120, "Keep it short — 'Granddaughter', 'Cousin David'.")
+    .optional(),
 });
 
 export type SourceMedium = z.infer<typeof sourceMediumSchema>;
@@ -246,5 +301,8 @@ export type ReaderPerson = z.infer<typeof readerPersonSchema>;
 export type ReaderTotals = z.infer<typeof readerTotalsSchema>;
 export type MemoirReading = z.infer<typeof memoirReadingSchema>;
 export type CommentCreate = z.infer<typeof commentCreateSchema>;
+export type ReaderOpen = z.infer<typeof readerOpenSchema>;
+export type ReaderSession = z.infer<typeof readerSessionSchema>;
+export type GateFormValues = z.output<typeof gateFormSchema>;
 export type CommentFormValues = z.output<typeof commentFormSchema>;
 export type CommentReceipt = z.infer<typeof commentReceiptSchema>;

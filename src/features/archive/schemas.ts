@@ -83,3 +83,50 @@ export type MemoryKind = z.infer<typeof memoryKindSchema>;
 export type Memory = z.infer<typeof memorySchema>;
 export type MemoryCreate = z.infer<typeof memoryCreateSchema>;
 export type MemoryFormValues = z.output<typeof memoryFormSchema>;
+
+/* -------------------------------------------------------------------------
+ * The book
+ * -------------------------------------------------------------------------
+ * Three requests the owner makes about the memoir as a whole rather than about
+ * one memory: assemble it, seal it, and take a copy away.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * What assembling produced. Mirrors the backend's `AssemblyResult`.
+ *
+ * Four counts and nothing else — facts about what their archive turned into,
+ * with no denominator. `figures` can honestly be lower than the number of
+ * photographs: one in a chapter with no prose has no paragraph to sit beside.
+ */
+export const assemblyResultSchema = z.object({
+  chapters: z.number().int(),
+  blocks: z.number().int(),
+  sources: z.number().int(),
+  figures: z.number().int(),
+});
+
+/** What sealing gives back. Never the passphrase — see `publishFormSchema`. */
+export const memoirPublicationSchema = z.object({
+  view_token: z.string(),
+  published_at: z.string(),
+});
+
+/**
+ * The passphrase, on its way to being sealed in.
+ *
+ * Eight characters is the backend's floor, checked here so the message names
+ * the field rather than arriving as a 422. There is no confirm field: the owner
+ * can replace it afterwards, and asking somebody to type a passphrase twice is
+ * a ceremony that catches typos the replace button already forgives.
+ */
+export const publishFormSchema = z.object({
+  passphrase: z
+    .string()
+    .trim()
+    .min(8, "Use at least eight characters — a short phrase is ideal.")
+    .max(256, "Keep it under 256 characters."),
+});
+
+export type AssemblyResult = z.infer<typeof assemblyResultSchema>;
+export type MemoirPublication = z.infer<typeof memoirPublicationSchema>;
+export type PublishFormValues = z.output<typeof publishFormSchema>;

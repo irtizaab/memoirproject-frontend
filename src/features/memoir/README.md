@@ -5,8 +5,10 @@ The finished book, as the family reads it. The twin of the backend's
 
 | File | What it holds |
 | --- | --- |
-| `schemas.ts` | `chapterSchema`, `memoirReadingSchema`, `commentCreateSchema` |
-| `api.ts` | `getReading`, `getChapter`, `listThreads`, `postComment` |
+| `schemas.ts` | `chapterSchema`, `memoirReadingSchema`, `readerSessionSchema` |
+| `api.ts` | `openMemoir`, `getReading`, `getChapter`, `listThreads`, `postComment` |
+| `readerSession.ts` | The session cookie, and which memoir a link opened |
+| `components/MemoirGate.tsx` | The door: passphrase, name, relation |
 | `queries.ts` | **Server** data path — the prose, fetched before the page is sent |
 | `hooks.ts` | **Client** data path — the comment layer, and only that |
 | `utils.ts` | Roman numerals, credit lines, and `segment()` |
@@ -23,6 +25,33 @@ feature is addressed by a token rather than a session, why `queries.ts` exists
 at all (like `features/invitation`, and unlike everything else), and why
 `/m/[token]` sits outside the `(app)` route group with its own chrome. Signed-in
 navigation would be four dead ends.
+
+## The door
+
+A view link is made to be forwarded, and every forward is a copy of the whole
+book — so the link is half a credential now. The other half is a passphrase the
+owner set at publication, and `POST /r/{token}/open` exchanges the two for a
+**reader session** that also says who is holding it.
+
+Three consequences run through this feature:
+
+- **The session is a cookie**, not `localStorage`. `/m/[token]` is server-
+  rendered so the prose arrives in the first response, and a server render
+  cannot see `localStorage`. `readerSession.ts` is the whole mechanism.
+- **Nobody reads anonymously.** The name is taken once, at the door, so
+  `commentCreateSchema` carries none and `CommentComposer` states whose a
+  reflection will be rather than asking again. Before this, a person could read
+  a whole family's memoir as nobody at all and be asked who they were only if
+  they had something to say.
+- **The owner is not asked anything.** `MemoirGate` tries their Supabase
+  session silently before showing a form; the backend recognises them and lets
+  them in as their own owner participant, which is what keeps `is_owner`
+  honest on their comments.
+
+Every way of failing answers 404 — an unknown link, a revoked one, the wrong
+passphrase — and the gate repeats one sentence for all of them. Saying "that
+link is real but your passphrase is wrong" is what turns a forwarded link into
+something worth guessing at.
 
 It is also the only screen in the product wider than one column, which the
 `(app)` shell's centred `max-w-5xl` could not have held.

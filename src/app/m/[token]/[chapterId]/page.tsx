@@ -12,9 +12,14 @@
  */
 
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
-import { ChapterReader, ReaderFrame } from "@/features/memoir";
+import { ChapterReader, MemoirGate, ReaderFrame } from "@/features/memoir";
+import {
+  readReaderName,
+  readReaderSession,
+} from "@/features/memoir/readerSession";
 import { fetchChapter, fetchReading } from "@/features/memoir/server";
 import { isApiError } from "@/lib/api/errors";
 
@@ -24,9 +29,11 @@ export async function generateMetadata({
   params: Promise<{ token: string; chapterId: string }>;
 }): Promise<Metadata> {
   const { token, chapterId } = await params;
+  const reader = readReaderSession((await cookies()).toString(), token);
+  if (!reader) return { title: "A memoir" };
 
   try {
-    const chapter = await fetchChapter(token, chapterId);
+    const chapter = await fetchChapter(token, chapterId, reader);
     return { title: chapter.title };
   } catch {
     // A title is not worth a 500. The page below decides what a failure means.
@@ -40,25 +47,44 @@ export default async function ChapterPage({
   params: Promise<{ token: string; chapterId: string }>;
 }) {
   const { token, chapterId } = await params;
+  const jar = (await cookies()).toString();
+  const reader = readReaderSession(jar, token);
+  const readerName = readReaderName(jar, token);
+
+  // Somebody who followed a link straight to a chapter is asked at the door
+  // like everybody else, and lands back here once it opens.
+  if (!reader) return <MemoirGate token={token} subjectName={null} />;
 
   let reading;
   let chapter;
   try {
     [reading, chapter] = await Promise.all([
-      fetchReading(token),
-      fetchChapter(token, chapterId),
+      fetchReading(token, reader),
+      fetchChapter(token, chapterId, reader),
     ]);
   } catch (error) {
-    // 404 covers a dead link, a wrong-scope link, and a chapter belonging to
-    // somebody else's memoir. Deliberately undistinguished — the backend does
-    // not tell them apart either.
-    if (isApiError(error) && error.status === 404) notFound();
+    // 404 covers a dead link, a wrong-scope link, a session that no longer
+    // holds, and a chapter belonging to somebody else's memoir. Deliberately
+    // undistinguished — the backend does not tell them apart either — except
+    // that a caller who has a session and lost it is worth sending to the door
+    // rather than to a missing page.
+    if (isApiError(error) && error.status === 404) {
+      return <MemoirGate token={token} subjectName={null} />;
+    }
     throw error;
   }
 
+  if (!chapter) notFound();
+
   return (
     <ReaderFrame token={token} reading={reading} currentChapterId={chapter.id}>
-      <ChapterReader token={token} reading={reading} chapter={chapter} />
+      <ChapterReader
+        token={token}
+        reader={reader}
+        readerName={readerName}
+        reading={reading}
+        chapter={chapter}
+      />
     </ReaderFrame>
   );
 }

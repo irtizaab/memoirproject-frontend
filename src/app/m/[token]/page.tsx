@@ -11,15 +11,19 @@
  * the product wider than a single column, which the `(app)` shell's centred
  * `max-w-5xl` could not hold.
  *
- * Rendered on the server: a view link needs no browser-held credential, so a
- * family opening this on a phone gets the words in the first response rather
- * than a spinner.
+ * Rendered on the server, still — the reader session lives in a cookie rather
+ * than `localStorage` precisely so that it arrives with the request and a
+ * family opening this on a phone gets the words in the first response.
+ * Somebody without one gets the door instead, which is the only client
+ * component on this route.
  */
 
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
-import { BookCover, ReaderFrame } from "@/features/memoir";
+import { BookCover, MemoirGate, ReaderFrame } from "@/features/memoir";
+import { readReaderSession } from "@/features/memoir/readerSession";
 import { fetchReading } from "@/features/memoir/server";
 import { isApiError } from "@/lib/api/errors";
 
@@ -32,18 +36,27 @@ export default async function MemoirPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  const reader = readReaderSession((await cookies()).toString(), token);
+
+  // No session at all: nothing has been asked of the backend, and nothing has
+  // been given away. The door does not say whether this link is real.
+  if (!reader) return <MemoirGate token={token} subjectName={null} />;
 
   let reading;
   try {
-    reading = await fetchReading(token);
+    reading = await fetchReading(token, reader);
   } catch (error) {
-    // 404 means the token is unknown, revoked, or is a contribute link rather
-    // than a view link. It does not say which, and neither does this page.
-    // Anything else — the backend down, a contract mismatch — is a real fault
-    // and should surface rather than be disguised as a missing page.
-    if (isApiError(error) && error.status === 404) notFound();
+    // A session that no longer holds — the passphrase was replaced, the link
+    // reissued — comes back as the same 404 as a link that never existed. Show
+    // the door rather than a missing page: a family whose passphrase changed
+    // should be asked for the new one, not told their memoir is gone.
+    if (isApiError(error) && error.status === 404) {
+      return <MemoirGate token={token} subjectName={null} />;
+    }
     throw error;
   }
+
+  if (!reading) notFound();
 
   return (
     <ReaderFrame token={token} reading={reading} currentChapterId={null}>

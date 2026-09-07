@@ -117,3 +117,62 @@ export async function apiRequest<TSchema extends ZodType>({
 
   return result.data;
 }
+
+/**
+ * Fetches a file rather than a document.
+ *
+ * The one response in the product that is not JSON: the memoir as a PDF. It
+ * needs the same base URL, the same timeout and the same error normalisation as
+ * everything else, and it is here rather than in a feature because this module
+ * is the only one that calls `fetch` — a rule worth keeping for one exception
+ * more than for none.
+ *
+ * There is no schema to validate against, which is the honest reason this is a
+ * second function instead of a flag on the first: `apiRequest` guarantees that
+ * nothing unvalidated enters the app, and bytes on their way to a download are
+ * outside that promise rather than an exemption from it.
+ *
+ * Returns the blob and the filename the server asked for, so the caller can
+ * hand the browser a name a family will recognise.
+ */
+export async function apiDownload({
+  path,
+  headers,
+  signal,
+}: {
+  path: string;
+  headers?: Record<string, string>;
+  signal?: AbortSignal;
+}): Promise<{ blob: Blob; filename: string | null }> {
+  const url = `${env.NEXT_PUBLIC_API_BASE_URL}${path}`;
+
+  const timeout = AbortSignal.timeout(env.NEXT_PUBLIC_API_TIMEOUT_MS);
+  const combinedSignal = signal ? AbortSignal.any([timeout, signal]) : timeout;
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "GET",
+      signal: combinedSignal,
+      cache: "no-store",
+      headers: { Accept: "application/pdf", ...headers },
+    });
+  } catch (cause) {
+    unstable_rethrow(cause);
+    throw ApiError.network(url, cause);
+  }
+
+  if (!response.ok) {
+    throw ApiError.http(url, response.status, await readErrorDetail(response));
+  }
+
+  // `attachment; filename="Eleanor Marsh.pdf"` — the quotes are optional in
+  // the header and the fallback is the caller's problem, not this module's.
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+
+  return {
+    blob: await response.blob(),
+    filename: match ? decodeURIComponent(match[1]) : null,
+  };
+}

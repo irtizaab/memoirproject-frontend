@@ -100,6 +100,21 @@ export function useSubmitContribution(linkToken: string, memoirId: string) {
  * A hook rather than re-exporting `storeContributorToken`, so the key and the
  * "scoped to the memoir, not the link" rule stay in one place.
  */
+export function useRememberContributorFor() {
+  /**
+   * The same thing as `useRememberContributor`, for a caller that does not know
+   * which memoir it is until the answer arrives.
+   *
+   * The reader's gate is that caller: it holds a view link, and the memoir id
+   * comes back with the session. Storage still happens here rather than in
+   * `features/memoir`, which is the rule this file exists to keep — one place
+   * decides how a person with no account is remembered.
+   */
+  return useCallback((memoirId: string, token: string | null) => {
+    if (token) storeContributorToken(memoirId, token);
+  }, []);
+}
+
 export function useRememberContributor(memoirId: string) {
   return useCallback(
     (token: string | null) => {

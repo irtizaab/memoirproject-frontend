@@ -143,8 +143,12 @@ export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
       {/* The four numbers, stated once, after it has just happened. */}
       {assemble.isSuccess && (
         <p className="mt-4 font-sans text-sm text-ink-soft">
-          {assemble.data.chapters} chapters, {assemble.data.blocks} passages,{" "}
-          {assemble.data.figures} photographs placed.
+          {assemble.data.chapters}{" "}
+          {assemble.data.chapters === 1 ? "chapter" : "chapters"},{" "}
+          {assemble.data.blocks}{" "}
+          {assemble.data.blocks === 1 ? "passage" : "passages"},{" "}
+          {assemble.data.figures}{" "}
+          {assemble.data.figures === 1 ? "photograph" : "photographs"} placed.
         </p>
       )}
 

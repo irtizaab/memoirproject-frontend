@@ -32,14 +32,23 @@ export function SearchScreen({
   source,
   backHref,
   backLabel,
-  chapterHref,
+  chapterBase,
   subjectName,
 }: {
   source: SearchSource;
   backHref: string;
   backLabel: string;
-  /** Where a hit in the book goes. Null when the reader is not reachable. */
-  chapterHref: ((chapterId: string) => string) | null;
+  /**
+   * What a hit in the book links to, minus the chapter id — `/m/{token}`.
+   * Null when the reader is not reachable, which is a memoir nobody has
+   * published yet.
+   *
+   * A string rather than a function, and that is not a style choice: the
+   * reader's search page is a server component, and a function cannot cross
+   * into a client one. It fails at runtime, not at build time, which is
+   * exactly the kind of thing a typecheck lets through.
+   */
+  chapterBase: string | null;
   subjectName: string | null;
 }) {
   const [query, setQuery] = useState("");
@@ -146,7 +155,7 @@ export function SearchScreen({
           <ul className="space-y-4">
             {hits.map((hit) => (
               <li key={`${hit.kind}-${hit.id}`}>
-                <Result hit={hit} chapterHref={chapterHref} />
+                <Result hit={hit} chapterBase={chapterBase} />
               </li>
             ))}
           </ul>
@@ -208,13 +217,13 @@ function Chip({
  */
 function Result({
   hit,
-  chapterHref,
+  chapterBase,
 }: {
   hit: SearchHit;
-  chapterHref: ((chapterId: string) => string) | null;
+  chapterBase: string | null;
 }) {
   const href =
-    hit.chapter_id && chapterHref ? chapterHref(hit.chapter_id) : null;
+    hit.chapter_id && chapterBase ? `${chapterBase}/${hit.chapter_id}` : null;
 
   const body = (
     <article className="rounded-2xl border border-border bg-card p-5 transition-colors hover:border-ink-faint">

@@ -32,7 +32,7 @@ export default async function ReaderSearchPage({
         source={{ kind: "reader", token, reader }}
         backHref={`/m/${token}`}
         backLabel="Back to the memoir"
-        chapterHref={(chapterId) => `/m/${token}/${chapterId}`}
+        chapterBase={`/m/${token}`}
         subjectName={null}
       />
     </main>

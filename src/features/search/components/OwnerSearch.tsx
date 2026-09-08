@@ -33,11 +33,7 @@ export function OwnerSearch() {
       // A hit in the book links into the reader, which the owner reaches by
       // the same view link everybody else does. Before publication there is no
       // link, so a result says what it found and stops there.
-      chapterHref={
-        memoir.view_token
-          ? (chapterId) => `/m/${memoir.view_token}/${chapterId}`
-          : null
-      }
+      chapterBase={memoir.view_token ? `/m/${memoir.view_token}` : null}
       subjectName={memoir.subject_name}
     />
   );

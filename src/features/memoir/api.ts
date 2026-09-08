@@ -11,6 +11,12 @@
  * designed: the family reading a finished memoir have no accounts and never
  * will.
  *
+ * `openMemoir` is the one call that will carry a bearer token, and it is passed
+ * in by the gate rather than read here — the owner opening their own memoir is
+ * recognised by their account and let through without a passphrase. Reading
+ * the session inside this file would make every other call look like it might
+ * do the same.
+ *
  * Since the door, every call carries a second header. `X-Link-Token` says which
  * memoir; `X-Reader-Token` says who is holding the link, and is only issued by
  * `openMemoir` in exchange for the passphrase. A link that has been forwarded
@@ -68,7 +74,7 @@ function linkHeaders(token: string, reader?: string | null): Record<string, stri
 export async function openMemoir(
   token: string,
   body: ReaderOpen,
-  options: RequestOptions = {},
+  options: RequestOptions & { headers?: Record<string, string> } = {},
 ): Promise<ReaderSession> {
   return apiRequest({
     path: ENDPOINTS.open(token),

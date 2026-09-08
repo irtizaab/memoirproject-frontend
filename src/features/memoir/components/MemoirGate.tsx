@@ -17,6 +17,7 @@ import {
 } from "@/features/memoir/readerSession";
 import { gateFormSchema, type GateFormValues } from "@/features/memoir/schemas";
 import { useSupabaseSession } from "@/hooks/useSupabaseSession";
+import { authHeaders } from "@/lib/supabase/client";
 import { isApiError } from "@/lib/api/errors";
 
 /**
@@ -102,11 +103,18 @@ export function MemoirGate({
   };
 
   // The owner's silent attempt, once, as soon as we know there is a session.
+  //
+  // The bearer token is the whole request: the backend reads it, sees this
+  // account owns the memoir the link points at, and issues a session without
+  // asking for anything. Without the header it is just an anonymous open with
+  // no passphrase, which is a 404 — so the owner would be shown a form asking
+  // for a passphrase they set themselves.
   useEffect(() => {
     if (accountPending || !account || ownerTried.current) return;
     ownerTried.current = true;
 
-    void openMemoir(token, {})
+    void authHeaders()
+      .then((headers) => openMemoir(token, {}, { headers }))
       .then(admit)
       // Not theirs. Nothing to say — the form below is the answer.
       .catch(() => {});

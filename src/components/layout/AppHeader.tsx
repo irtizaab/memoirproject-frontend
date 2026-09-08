@@ -159,16 +159,25 @@ export function AppHeader() {
             <DropdownMenuContent align="end" className="w-56">
               {user?.email && (
                 <>
-                  <DropdownMenuLabel className="truncate font-normal text-ink-faint">
+                  {/*
+                    A plain div, not `DropdownMenuLabel`. That component is Base
+                    UI's `Menu.GroupLabel`, which exists to put its id on a
+                    group's `aria-labelledby` and throws when there is no group
+                    above it. This line labels nothing — it is who you are
+                    signed in as — so it has no group to belong to. Same
+                    `role="presentation"` and the same classes as the component
+                    rendered, so the DOM is unchanged.
+                  */}
+                  <div
+                    role="presentation"
+                    className="truncate px-1.5 py-1 text-xs font-normal text-ink-faint"
+                  >
                     {user.email}
-                  </DropdownMenuLabel>
+                  </div>
                   <DropdownMenuSeparator />
                 </>
               )}
 
-              <DropdownMenuLabel className="eyebrow-muted">
-                Appearance
-              </DropdownMenuLabel>
               {/*
                 Three options, not a switch. "System" is a real answer and the
                 default one — it means "follow this machine, including when it
@@ -179,6 +188,15 @@ export function AppHeader() {
                 value={theme}
                 onValueChange={(value) => setTheme(value as Theme)}
               >
+                {/*
+                  Inside the radio group, not above it. `Menu.RadioGroup` is one
+                  of the two components that provide the context `GroupLabel`
+                  reads, and being in it is also what makes this heading the
+                  group's `aria-labelledby` rather than a floating word.
+                */}
+                <DropdownMenuLabel className="eyebrow-muted">
+                  Appearance
+                </DropdownMenuLabel>
                 {THEMES.map(({ value, label, Icon }) => (
                   <DropdownMenuRadioItem key={value} value={value}>
                     <Icon aria-hidden className="mr-2 size-4 text-ink-soft" />

@@ -232,6 +232,73 @@
   --rule: #332d25;
 }
 
+/*
+ * ---------------------------------------------------------------------------
+ * Onboarding is always light, whatever the machine says.
+ * ---------------------------------------------------------------------------
+ *
+ * It is the one screen a signed-out visitor is meant to reach, it is designed
+ * as paper, and it carries no header — so there is no toggle on it and nothing
+ * for a theme to mean. It also holds the only four hard-coded colours in the
+ * frontend (`onboarding.module.css`, the two creams), which on a dark machine
+ * stayed cream while the ten tokens around them flipped. Pinning the route to
+ * light makes those four correct by construction instead of by four more
+ * overrides.
+ *
+ * A class rather than `data-theme="light"` on the document: writing that would
+ * either overwrite a preference the visitor did choose, or land after mount and
+ * show the one dark frame the script in `app/layout.tsx` exists to prevent.
+ *
+ * The shadcn contract is repeated below the ten, and it has to be. A `var()`
+ * inside a custom property is substituted on the element that *declares* it,
+ * not on the element that finally uses it: `--card: var(--paper-raised)` is
+ * declared on `:root`, so on a dark machine it computes to the dark sheet
+ * there and inherits down already resolved. Overriding `--paper-raised` on a
+ * descendant comes too late to change it. Re-declaring the contract here
+ * re-runs that substitution against the values above, which is why `bg-card`,
+ * `border-border` and the primary button come out light inside the flow.
+ *
+ * This is why the dark blocks do not need the same repetition: they redefine
+ * the ten on `:root` itself, the same element the contract is declared on.
+ *
+ * The values are a fourth copy because CSS cannot say "put these back to what
+ * `:root` says". That is the honest cost, and it is why this block sits against
+ * the other three rather than somewhere near the onboarding code: a palette
+ * change has to touch all four together, and they are easier to keep equal when
+ * you can see them at once.
+ */
+.palette-light {
+  --paper: #f3eee5;
+  --paper-deep: #eae2d4;
+  --paper-raised: #fffdf9;
+  --ink: #1c1a17;
+  --ink-soft: #6b6459;
+  --ink-faint: #9c9182;
+  --seal: #7c1015;
+  --seal-dark: #5e0c10;
+  --seal-wash: #f7ece8;
+  --rule: #ded5c4;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-raised);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--seal);
+  --primary-foreground: var(--paper);
+  --secondary: var(--paper-deep);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-deep);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--seal-wash);
+  --accent-foreground: var(--seal);
+  --destructive: var(--seal);
+  --border: var(--rule);
+  --input: var(--rule);
+  --ring: var(--seal);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

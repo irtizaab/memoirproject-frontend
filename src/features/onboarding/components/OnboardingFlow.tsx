@@ -113,7 +113,7 @@ export function OnboardingFlow() {
   }
 
   return (
-    <div className={styles.shell}>
+    <div className={`${styles.shell} palette-light`}>
       <BackgroundLayer step={step} />
 
       {/*

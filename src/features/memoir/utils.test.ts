@@ -202,7 +202,13 @@ describe("chapterSpan", () => {
 
   it("places a chapter along the life it belongs to", () => {
     const span = chapterSpan(
-      { id: "c", ordinal: 0, title: "One", from_year: 1948, through_year: 1958 },
+      {
+        id: "c",
+        ordinal: 0,
+        title: "One",
+        from_year: 1948,
+        through_year: 1958,
+      },
       reading,
     );
     expect(span).toEqual({ left: 20, width: 10 });
@@ -211,7 +217,13 @@ describe("chapterSpan", () => {
   it("refuses to guess when the years are unknown", () => {
     expect(
       chapterSpan(
-        { id: "c", ordinal: 0, title: "One", from_year: null, through_year: null },
+        {
+          id: "c",
+          ordinal: 0,
+          title: "One",
+          from_year: null,
+          through_year: null,
+        },
         reading,
       ),
     ).toBeNull();

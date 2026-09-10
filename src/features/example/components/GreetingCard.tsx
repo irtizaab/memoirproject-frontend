@@ -8,7 +8,13 @@
  * and `GreetingForm` passes its mutation result to the same component.
  */
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import type { GreetingResponse } from "@/features/example/schemas";
 
 type GreetingCardProps = {
@@ -17,7 +23,11 @@ type GreetingCardProps = {
   description?: string;
 };
 
-export function GreetingCard({ greeting, title, description }: GreetingCardProps) {
+export function GreetingCard({
+  greeting,
+  title,
+  description,
+}: GreetingCardProps) {
   return (
     <Card>
       {(title || description) && (

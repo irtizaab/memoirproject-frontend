@@ -110,3 +110,87 @@ export function formatBytes(bytes: number): string {
   // cleanly, "512.4 MB" is noise.
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
 }
+
+/**
+ * `6120000` → `"1h 42m"`. The statistics bar's cut of a duration.
+ *
+ * `formatDuration` in `features/media` is the other one, and they are not
+ * interchangeable: that reads a single recording as `"1:42"`, which for a
+ * memoir's worth of audio would say `"102:00"`. Whole minutes only — this is
+ * reassurance that something is accumulating, not a measurement.
+ */
+function formatSpan(ms: number): string {
+  const minutes = Math.round(ms / 60000);
+  if (minutes < 60) return `${minutes}m`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+/**
+ * The four cells of the archive's statistics bar.
+ *
+ * `docs/DESIGN-SYSTEM.md` §7 is explicit about what this is for: **reassurance
+ * that this is working, not measurement.** So there is no total to be a
+ * fraction of, no target, and nothing here is a rate. Four plain facts about
+ * what the archive currently holds.
+ *
+ * Every one is derived from the memories the archive already fetched — no new
+ * endpoint, and no cell that has to be filled with a guess. "Voices" counts
+ * distinct participants who left a recording, not recordings: three voice notes
+ * from one son is one voice.
+ */
+export function archiveStats(
+  memories: {
+    participant_id: string;
+    assets: { kind: string; duration_ms: number | null }[];
+  }[],
+): { n: string; label: string }[] {
+  let photographs = 0;
+  let recordedMs = 0;
+  const voices = new Set<string>();
+
+  for (const memory of memories) {
+    for (const asset of memory.assets) {
+      if (asset.kind === "image") photographs += 1;
+      if (asset.kind === "audio") {
+        recordedMs += asset.duration_ms ?? 0;
+        voices.add(memory.participant_id);
+      }
+    }
+  }
+
+  return [
+    { n: String(memories.length), label: "Memories" },
+    { n: String(photographs), label: "Photographs" },
+    { n: recordedMs > 0 ? formatSpan(recordedMs) : "—", label: "Recorded" },
+    { n: String(voices.size), label: "Voices" },
+  ];
+}
+
+/**
+ * The printed byline: `"Yusuf Ali, his friend"`.
+ *
+ * A memory's `contributor_relationship` is stored from the contributor's own
+ * point of view — they said the subject was "my friend" — so it is turned round
+ * here to read from the page's. `other` and anything unrecognised contribute
+ * nothing rather than "other", which is what the credit lines used to say.
+ */
+export function tellerLine(memory: {
+  contributor_name: string;
+  contributor_relationship: string;
+}): string {
+  const kinship: Record<string, string> = {
+    child: "their child",
+    grandchild: "their grandchild",
+    spouse_partner: "their partner",
+    parent: "their parent",
+    sibling: "their sibling",
+    friend: "their friend",
+    colleague: "their colleague",
+    neighbour: "their neighbour",
+  };
+
+  const relation = kinship[memory.contributor_relationship];
+  return relation
+    ? `${memory.contributor_name}, ${relation}`
+    : memory.contributor_name;
+}

@@ -195,7 +195,6 @@ export function useDeleteMemory(memoirId: string | null) {
   });
 }
 
-
 /**
  * One memory, for the detail page.
  *

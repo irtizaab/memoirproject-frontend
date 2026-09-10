@@ -8,7 +8,11 @@
 
 import { z } from "zod";
 
-import { apiDownload, apiRequest, type ApiRequestCaching } from "@/lib/api/client";
+import {
+  apiDownload,
+  apiRequest,
+  type ApiRequestCaching,
+} from "@/lib/api/client";
 import { authHeaders } from "@/lib/supabase/client";
 import {
   assemblyResultSchema,
@@ -93,7 +97,11 @@ export async function createMemory(
  */
 export async function updateMemory(
   memoryId: string,
-  patch: { title?: string | null; body_text?: string | null; happened_on?: string | null },
+  patch: {
+    title?: string | null;
+    body_text?: string | null;
+    happened_on?: string | null;
+  },
   options: RequestOptions = {},
 ): Promise<Memory> {
   return apiRequest({
@@ -125,7 +133,6 @@ export async function deleteMemory(
     ...options,
   });
 }
-
 
 /**
  * Adds already-uploaded photographs or recordings to an existing memory.
@@ -203,6 +210,22 @@ export async function getMemory(
  * ------------------------------------------------------------------------- */
 
 /**
+ * How long to let assembly run, in milliseconds.
+ *
+ * The longest request in the product by a wide margin: a model reads the whole
+ * archive and writes a book out of it, on the slower tier, and the backend
+ * allows it five minutes. The app's default timeout is ten seconds, chosen so
+ * a backend that has stopped answering fails a screen fast — which is right
+ * for a database read and wrong for this.
+ *
+ * Left at the default, the browser gives up while the backend is still
+ * working, and it *keeps* working: the chapters get written and the owner is
+ * told it failed. Six minutes, so this outlasts the backend's own limit and
+ * whatever the answer is, it is the real one.
+ */
+const ASSEMBLE_TIMEOUT_MS = 360_000;
+
+/**
  * Turn everything in the archive into chapters.
  *
  * Owner only, and re-runnable while the memoir is a draft: the owner adds
@@ -219,6 +242,7 @@ export async function assembleMemoir(
     method: "POST",
     headers: await authHeaders(),
     schema: assemblyResultSchema,
+    timeoutMs: ASSEMBLE_TIMEOUT_MS,
     ...options,
   });
 }

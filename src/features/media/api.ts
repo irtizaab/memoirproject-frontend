@@ -96,7 +96,8 @@ export async function uploadFile(
     durationMs?: number;
   },
 ): Promise<MediaAsset> {
-  const mimeType = file.type || (kind === "image" ? "image/jpeg" : "audio/webm");
+  const mimeType =
+    file.type || (kind === "image" ? "image/jpeg" : "audio/webm");
 
   const ticket = await beginUpload(memoirId, kind, mimeType, credential, {
     ...(filename ? { original_filename: filename } : {}),

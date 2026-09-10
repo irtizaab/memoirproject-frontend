@@ -13,10 +13,7 @@ import {
   mergeContributors,
   reissueLink,
 } from "@/features/contributors/api";
-import type {
-  MergeResult,
-  ShareLink,
-} from "@/features/contributors/schemas";
+import type { MergeResult, ShareLink } from "@/features/contributors/schemas";
 
 export const contributorKeys = {
   all: ["contributors"] as const,
@@ -42,22 +39,20 @@ export function useContributors(memoirId: string | null) {
 export function useMergeContributors(memoirId: string | null) {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    MergeResult,
-    Error,
-    { loserId: string; winnerId: string }
-  >({
-    mutationFn: ({ loserId, winnerId }) => {
-      if (!memoirId) throw new Error("No memoir is loaded yet.");
-      return mergeContributors(memoirId, loserId, winnerId);
+  return useMutation<MergeResult, Error, { loserId: string; winnerId: string }>(
+    {
+      mutationFn: ({ loserId, winnerId }) => {
+        if (!memoirId) throw new Error("No memoir is loaded yet.");
+        return mergeContributors(memoirId, loserId, winnerId);
+      },
+      onSuccess: () => {
+        void queryClient.invalidateQueries({
+          queryKey: contributorKeys.list(memoirId ?? "none"),
+        });
+        void queryClient.invalidateQueries({ queryKey: archiveKeys.all });
+      },
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: contributorKeys.list(memoirId ?? "none"),
-      });
-      void queryClient.invalidateQueries({ queryKey: archiveKeys.all });
-    },
-  });
+  );
 }
 
 /**

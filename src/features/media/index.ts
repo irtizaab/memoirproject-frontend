@@ -14,6 +14,7 @@ export {
   VoiceRecorder,
   type Recording,
 } from "@/features/media/components/VoiceRecorder";
+export { DiscardPrompt } from "@/features/media/components/DiscardPrompt";
 export { TranscriptReader } from "@/features/media/components/TranscriptReader";
 export { mediaAssetSchema, transcriptSchema } from "@/features/media/schemas";
 export {

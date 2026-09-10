@@ -67,7 +67,9 @@ Run `npm run verify` (typecheck + lint + test) before considering work complete.
 /archive         the owner's memories, as summaries    ┐
 /archive/[id]    one memory in full                    │
 /archive/new     the composer                          │ (app) route group:
-/contributors    who is in it, and the share link      │ header, footer,
+/questions       what the family is asked before they  │ header, footer,
+                 write, and who decides it             │
+/contributors    who is in it, and the share link      │
 /billing         plan and storage meter                │ session guard
 /search          the whole memoir, searched            ┘
 /j/[token]       a contributor — its own chrome, server-rendered
@@ -77,7 +79,11 @@ Run `npm run verify` (typecheck + lint + test) before considering work complete.
 ```
 
 `src/app/(app)/` is a route group: parenthesised, so it adds a layout without adding a URL
-segment. `/onboarding`, `/j/[token]` and `/m/[token]` sit outside it on purpose — the first is
+segment. **Its `main` is full-bleed and centres nothing** — a page is bands at different weights
+(a `--paper-deep` title band with a rule under it, then the ordinary page), and a band cannot run
+edge to edge inside a centred column. Width belongs to `PageHeader` and `PageBody` in
+`components/layout/`, which is where the 1024px measure is declared. Do not put a `max-w-*` back
+into the layout. `/onboarding`, `/j/[token]` and `/m/[token]` sit outside it on purpose — the first is
 reached before an account exists, the other two by people who will never have one.
 
 **Onboarding ends at `/archive`.** It used to end at five mock screens — a fake dashboard, a fake
@@ -109,15 +115,63 @@ it, `GET /me` stays cached with a memoir in it, onboarding's landing guard sees 
 `/archive`, `RequireSession` finds no session and redirects back — an infinite loop that looked like
 the app hanging. The guard now also requires a live session, as a second wall.
 
-**A memory is not one thing.** Writing, photographs and recordings go in together — the three
-tiles in the composer are *toggles*, not a choice, and all three can be lit. Both the owner's
+**A memory is not one thing.** Writing, photographs and recordings go in together — the two
+attachment rows in the composer are *toggles*, not a choice, and both can be lit alongside the
+writing. **Writing itself is not a toggle: it is always on.** The sheet is the page, and a composer
+whose writing surface can be switched off is a blank screen with a date picker on it. A memory can
+still be photographs or a recording with nothing typed — an empty box saves as no text at all, and
+the one rule that matters (a memory needs *something* in it) is enforced before the round trip and
+again by the backend's `EmptyMemory`. Both the owner's
 `MemoryComposer` and the contributor's `ContributeForm` share `useAttachments()` from
 `features/media`, because they ask a person for the same things and two copies of that state is how
 one of them grows a bug the other has not. **Turning a tile off discards what was in it** and
 revokes its object URLs — anything else uploads a recording the person believes they removed.
+**But it asks first.** That used to happen on one tap, with no confirm and no undo, and the files
+exist nowhere else: nothing is uploaded until Save, `PhotoPicker` keeps only its downscaled blob,
+and a recording's chunks only ever lived in that array. So `useAttachments` splits the two —
+`toggle()` lights a section or puts out an empty one, `holds()` says whether a tap would destroy
+something, and `discard()` is reached only once the person has answered `DiscardPrompt`. Note which
+way round this was: deleting an already-saved asset in `MemoryEditor` had a two-tap confirm, and the
+unrecoverable case did not.
 
 Do not send `kind`. The backend derives it from what the memory holds; the request schemas have no
 such field, and the response schema still does.
+
+**Nobody faces a blank page, and the owner decides what they face instead.**
+`/questions` is where a memoir's question library is made: the owner writes a
+line about the subject, a model drafts four or five easy questions for each
+`relationship_group`, and they edit any of them by hand or ask for a fresh set.
+`questions_mode` still chooses between that and the standard questions every
+memoir starts with, and switching destroys neither set — but **the screen no
+longer shows the choice**. Writing a set sets the mode to `custom` on the
+backend (`prompt_service.py`), so the control's only correct answer was already
+given by pressing the button; the page shows what a contributor would be asked
+today and nothing about which bucket it came from. The endpoint and
+`useSetQuestionsMode` remain, unused by the screen.
+
+**`self` is not a group the owner is shown.** It means the subject writing their
+own memoir, which nobody arriving through a share link is doing — the contribute
+form has never offered it either. It stays in `relationshipGroupSchema` because
+the column still has it and a response carrying it must parse; it is simply
+absent from `GROUP_ORDER`.
+
+A question the owner rewrites becomes `source: "owner"` and survives every
+later rewrite. That is the whole mechanism, and it is why the row says so.
+
+The contributor half lives in `features/invitation`: the questions appear above
+the composer as things to write *about*, not as a field each. There is still one
+box. No numbering, no "answered" state, no count — `AGENTS.md` on the backend
+forbids gamification, and a ticked-off list of questions is a progress bar.
+
+An earlier version of this generated a question per contributor after each
+memory, and the owner never saw any of it. `features/questions/README.md`
+explains at length why that was the wrong shape.
+
+**The contribute form asks how somebody knew the subject.** It has to: questions
+are per relationship, and until it asked, every contributor in every memoir was
+stored as `other` — which also meant the reader's credit lines all read "other".
+Optional, and it says so; skipping it leaves you in the `other` group rather
+than blocking the memory.
 
 **The book is behind a door.** A view link is made to be forwarded, and every
 forward is a copy of the whole memoir — so the link is half a credential. The

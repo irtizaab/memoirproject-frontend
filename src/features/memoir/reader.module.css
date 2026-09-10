@@ -169,7 +169,9 @@
   width: 22px;
   text-align: right;
   opacity: 0.55;
-  transition: opacity var(--step), color var(--step);
+  transition:
+    opacity var(--step),
+    color var(--step);
 }
 
 .para:hover .pnum {
@@ -187,7 +189,10 @@
   text-align: center;
   border: 1px solid transparent;
   opacity: 0;
-  transition: opacity var(--step), color var(--step), border-color var(--step);
+  transition:
+    opacity var(--step),
+    color var(--step),
+    border-color var(--step);
 }
 
 .para:hover .cmark,

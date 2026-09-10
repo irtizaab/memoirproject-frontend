@@ -1,6 +1,6 @@
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 /**
  * A filled bar showing one quantity against a limit — the archive storage
@@ -23,14 +23,14 @@ function Meter({
   ...props
 }: Omit<React.ComponentProps<"div">, "children"> & {
   /** Amount used, in the same unit as `max`. */
-  value: number
+  value: number;
   /** The limit. Values above it clamp — the bar never overflows. */
-  max: number
+  max: number;
   /** Announced to assistive tech, e.g. "3.2 GB of 10 GB used". */
-  label: string
+  label: string;
 }) {
-  const safeMax = max > 0 ? max : 1
-  const ratio = Math.min(Math.max(value / safeMax, 0), 1)
+  const safeMax = max > 0 ? max : 1;
+  const ratio = Math.min(Math.max(value / safeMax, 0), 1);
 
   return (
     <div
@@ -41,7 +41,7 @@ function Meter({
       aria-label={label}
       className={cn(
         "h-1.5 w-full overflow-hidden rounded-full bg-rule",
-        className
+        className,
       )}
       {...props}
     >
@@ -50,7 +50,7 @@ function Meter({
         style={{ width: `${ratio * 100}%` }}
       />
     </div>
-  )
+  );
 }
 
-export { Meter }
+export { Meter };

@@ -18,7 +18,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isApiError } from "@/lib/api/errors";
@@ -70,12 +76,17 @@ export function GreetingForm() {
                 placeholder="Ada Lovelace"
                 autoComplete="off"
                 aria-invalid={Boolean(errors.name)}
-                aria-describedby={errors.name ? "greeting-name-error" : undefined}
+                aria-describedby={
+                  errors.name ? "greeting-name-error" : undefined
+                }
                 {...register("name")}
               />
               {/* The message comes from the schema, not from this component. */}
               {errors.name && (
-                <p id="greeting-name-error" className="text-sm text-destructive">
+                <p
+                  id="greeting-name-error"
+                  className="text-sm text-destructive"
+                >
                   {errors.name.message}
                 </p>
               )}
@@ -101,7 +112,9 @@ export function GreetingForm() {
       </Card>
 
       {greeting.isError && <GreetingError error={greeting.error} />}
-      {greeting.isSuccess && <GreetingCard greeting={greeting.data} title="Response" />}
+      {greeting.isSuccess && (
+        <GreetingCard greeting={greeting.data} title="Response" />
+      )}
     </div>
   );
 }
@@ -136,7 +149,13 @@ function GreetingError({ error }: { error: Error }) {
   );
 }
 
-function ErrorBox({ title, children }: { title: string; children: React.ReactNode }) {
+function ErrorBox({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div
       role="alert"

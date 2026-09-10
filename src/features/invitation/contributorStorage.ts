@@ -105,7 +105,8 @@ export function migrateContributorToken(
   // it costs nothing and the bare `memoir.contributor.<linkToken>` is what is
   // actually in people's browsers today.
   const legacy =
-    read(`${KEY_PREFIX}${linkToken}`) ?? read(`${LEGACY_KEY_PREFIX}${linkToken}`);
+    read(`${KEY_PREFIX}${linkToken}`) ??
+    read(`${LEGACY_KEY_PREFIX}${linkToken}`);
 
   if (legacy) storeContributorToken(memoirId, legacy);
 }

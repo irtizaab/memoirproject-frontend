@@ -78,7 +78,10 @@ describe("GreetingForm", () => {
 
   it("explains a contract mismatch rather than showing a generic failure", async () => {
     postGreetingMock.mockRejectedValue(
-      ApiError.contract("http://backend.test/example/greet", "message (required)"),
+      ApiError.contract(
+        "http://backend.test/example/greet",
+        "message (required)",
+      ),
     );
 
     renderForm();
@@ -93,7 +96,10 @@ describe("GreetingForm", () => {
 
   it("reports an unreachable backend", async () => {
     postGreetingMock.mockRejectedValue(
-      ApiError.network("http://backend.test/example/greet", new TypeError("fetch failed")),
+      ApiError.network(
+        "http://backend.test/example/greet",
+        new TypeError("fetch failed"),
+      ),
     );
 
     renderForm();

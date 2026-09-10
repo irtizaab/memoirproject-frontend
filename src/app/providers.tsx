@@ -31,7 +31,10 @@ export function Providers({ children }: { children: ReactNode }) {
         the bundler resolves at build time.
       */}
       {process.env.NODE_ENV === "development" && (
-        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-right" />
+        <ReactQueryDevtools
+          initialIsOpen={false}
+          buttonPosition="bottom-right"
+        />
       )}
     </QueryClientProvider>
   );

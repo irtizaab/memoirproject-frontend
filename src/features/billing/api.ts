@@ -43,16 +43,13 @@ export async function getBilling(
   });
 }
 
-
 /**
  * Every plan that can be signed up for, cheapest first.
  *
  * No `authHeaders`: it is a price list, and the pricing screen asks for it
  * before the account has a billing overview to speak of.
  */
-export async function listPlans(
-  options: RequestOptions = {},
-): Promise<Plan[]> {
+export async function listPlans(options: RequestOptions = {}): Promise<Plan[]> {
   return apiRequest({
     path: ENDPOINTS.plans,
     method: "GET",

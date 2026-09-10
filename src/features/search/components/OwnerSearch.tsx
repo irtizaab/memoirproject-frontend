@@ -1,5 +1,6 @@
 "use client";
 
+import { PageBody } from "@/components/layout/PageBody";
 import { useActiveMemoir } from "@/features/account";
 import { SearchScreen } from "@/features/search/components/SearchScreen";
 
@@ -14,14 +15,20 @@ export function OwnerSearch() {
   const { memoir, isPending } = useActiveMemoir();
 
   if (isPending) {
-    return <p className="font-sans text-sm text-ink-faint">One moment…</p>;
+    return (
+      <PageBody>
+        <p className="font-sans text-sm text-ink-faint">One moment…</p>
+      </PageBody>
+    );
   }
 
   if (!memoir) {
     return (
-      <p className="font-sans text-sm text-ink-soft">
-        There is no memoir on this account yet.
-      </p>
+      <PageBody>
+        <p className="font-sans text-sm text-ink-soft">
+          There is no memoir on this account yet.
+        </p>
+      </PageBody>
     );
   }
 

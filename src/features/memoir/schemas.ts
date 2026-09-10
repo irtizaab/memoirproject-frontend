@@ -274,7 +274,10 @@ export const readerSessionSchema = z.object({
 
 /** What the gate's form collects, before it is sent. */
 export const gateFormSchema = z.object({
-  passphrase: z.string().trim().min(1, "The passphrase is needed to open this."),
+  passphrase: z
+    .string()
+    .trim()
+    .min(1, "The passphrase is needed to open this."),
   display_name: z
     .string()
     .trim()

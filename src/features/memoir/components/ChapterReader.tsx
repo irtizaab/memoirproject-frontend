@@ -228,9 +228,7 @@ export function ChapterReader({
               onLightSource={setLitSource}
               onFocusThread={setFocusedThread}
               onCopyAnchor={() => copyAnchor(anchor)}
-              onComment={() =>
-                setDraft({ kind: "thread", blockId: block.id })
-              }
+              onComment={() => setDraft({ kind: "thread", blockId: block.id })}
               onSelect={setSelection}
             />
 
@@ -525,8 +523,11 @@ function Paragraph({
               className={cn(
                 "transition-[box-shadow,background-color]",
                 commented && "cursor-pointer",
-                commented && !focused && "shadow-[inset_0_-1px_0_0_var(--rule)]",
-                focused && "bg-paper-deep shadow-[inset_0_-1px_0_0_var(--seal)]",
+                commented &&
+                  !focused &&
+                  "shadow-[inset_0_-1px_0_0_var(--rule)]",
+                focused &&
+                  "bg-paper-deep shadow-[inset_0_-1px_0_0_var(--seal)]",
                 lit && !focused && "shadow-[inset_0_-1px_0_0_var(--seal)]",
               )}
             >
@@ -666,11 +667,7 @@ function characterOffset(
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let counted = 0;
 
-  for (
-    let current = walker.nextNode();
-    current;
-    current = walker.nextNode()
-  ) {
+  for (let current = walker.nextNode(); current; current = walker.nextNode()) {
     if (current === node) return counted + offset;
     counted += current.textContent?.length ?? 0;
   }

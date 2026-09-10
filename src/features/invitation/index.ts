@@ -10,6 +10,7 @@ export { ContributeForm } from "@/features/invitation/components/ContributeForm"
 export { InvitationCard } from "@/features/invitation/components/InvitationCard";
 export {
   invitationKeys,
+  useContributorQuestions,
   useContributorToken,
   useRememberContributor,
   useRememberContributorFor,
@@ -19,5 +20,7 @@ export {
 export type {
   ContributedMemory,
   Contribution,
+  ContributorQuestions,
   Invitation,
+  RelationshipGroup,
 } from "@/features/invitation/schemas";

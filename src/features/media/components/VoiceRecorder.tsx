@@ -113,7 +113,9 @@ export function VoiceRecorder({
 
     const mimeType = supportedMimeType();
     if (!mimeType) {
-      setError("This browser cannot record audio. You can write it down instead.");
+      setError(
+        "This browser cannot record audio. You can write it down instead.",
+      );
       return;
     }
 

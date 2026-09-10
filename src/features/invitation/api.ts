@@ -12,15 +12,18 @@ import {
   contributionReceiptSchema,
   contributionSchema,
   invitationSchema,
+  questionsSchema,
   type ContributedMemory,
   type Contribution,
   type ContributionReceipt,
+  type ContributorQuestions,
   type Invitation,
 } from "@/features/invitation/schemas";
 
 const ENDPOINTS = {
   invitation: (token: string) => `/j/${encodeURIComponent(token)}`,
   memories: (token: string) => `/j/${encodeURIComponent(token)}/memories`,
+  questions: (token: string) => `/j/${encodeURIComponent(token)}/questions`,
 } as const;
 
 /**
@@ -88,6 +91,40 @@ export async function listMyContributions(
     method: "GET",
     headers: { "X-Participant-Token": participantToken },
     schema: contributedMemorySchema.array(),
+    cache: "no-store",
+    ...options,
+  });
+}
+
+/**
+ * The questions written for people like this contributor.
+ *
+ * The link is the whole credential — unlike `listMyContributions`, which needs
+ * the participant token because it returns somebody's own memories. This
+ * returns question text, which the same link already entitles its holder to
+ * see, so a first-time contributor gets the questions on the page they were
+ * written for rather than after they have already written something.
+ *
+ * `relationship` is what they have just tapped on the form. The participant
+ * token, when the browser holds one, is what they said last time.
+ */
+export async function getQuestions(
+  token: string,
+  participantToken: string | null,
+  relationship: string | null,
+  options: ApiRequestCaching & { signal?: AbortSignal } = {},
+): Promise<ContributorQuestions> {
+  const query = relationship
+    ? `?relationship=${encodeURIComponent(relationship)}`
+    : "";
+
+  return apiRequest({
+    path: `${ENDPOINTS.questions(token)}${query}`,
+    method: "GET",
+    headers: participantToken
+      ? { "X-Participant-Token": participantToken }
+      : undefined,
+    schema: questionsSchema,
     cache: "no-store",
     ...options,
   });

@@ -9,4 +9,8 @@
 export { SearchScreen } from "@/features/search/components/SearchScreen";
 export { searchKeys, useSearch } from "@/features/search/hooks";
 export type { SearchSource } from "@/features/search/hooks";
-export type { SearchHit, SearchKind, SearchResults } from "@/features/search/schemas";
+export type {
+  SearchHit,
+  SearchKind,
+  SearchResults,
+} from "@/features/search/schemas";

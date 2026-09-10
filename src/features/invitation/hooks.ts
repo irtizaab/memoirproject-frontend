@@ -13,6 +13,7 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  getQuestions,
   listMyContributions,
   submitContribution,
 } from "@/features/invitation/api";
@@ -33,6 +34,8 @@ export const invitationKeys = {
   all: ["invitation"] as const,
   mine: (linkToken: string) =>
     [...invitationKeys.all, "mine", linkToken] as const,
+  questions: (linkToken: string, relationship: string | null = null) =>
+    [...invitationKeys.all, "questions", linkToken, relationship] as const,
 };
 
 /**
@@ -145,5 +148,28 @@ export function useMyContributions(
     // being transcribed, and stop as soon as none is.
     refetchInterval: (query) =>
       hasPendingTranscript(query.state.data) ? 5000 : false,
+  });
+}
+
+/**
+ * The questions written for people like this contributor.
+ *
+ * Never disabled. The link alone is enough to be asked something, and it has
+ * to be: the person opening it for the first time has no participant token and
+ * is precisely who the questions were written for. Waiting for one meant the
+ * library first appeared *after* the memory it was meant to prompt.
+ *
+ * `relationship` is in the key rather than invalidated, because it is part of
+ * the question — tapping "grandchild" asks a different one, and two answers
+ * with two sets should not fight over one cache entry.
+ */
+export function useContributorQuestions(
+  linkToken: string,
+  participantToken: string | null,
+  relationship: string | null,
+) {
+  return useQuery({
+    queryKey: invitationKeys.questions(linkToken, relationship),
+    queryFn: () => getQuestions(linkToken, participantToken, relationship),
   });
 }

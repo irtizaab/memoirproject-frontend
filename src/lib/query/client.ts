@@ -20,7 +20,10 @@ export function makeQueryClient(): QueryClient {
           // A 4xx means we sent something wrong. Sending it again three more
           // times will not fix it — and a contract mismatch is a bug, not a
           // transient failure. Only retry things that might genuinely recover.
-          if (isApiError(error) && (error.isClientError || error.code === "contract")) {
+          if (
+            isApiError(error) &&
+            (error.isClientError || error.code === "contract")
+          ) {
             return false;
           }
           return failureCount < 2;

@@ -1,4 +1,4 @@
-# features/archive
+5# features/archive
 
 The owner's view of their memoir: what has been collected, and adding more.
 
@@ -11,7 +11,8 @@ The owner's view of their memoir: what has been collected, and adding more.
 | `components/ArchiveScreen.tsx` | `/archive` |
 | `components/MemoryComposer.tsx` | `/archive/new` |
 | `components/MemoryCard.tsx` | One memory in the grid |
-| `components/InviteBanner.tsx` | "Make it a shared story" |
+| `components/LeadMemory.tsx` | The newest memory, set at reading size above the grid |
+| `components/InviteBanner.tsx` | "One link, for everyone" — the share link, in the archive's second band |
 | `components/BookPanel.tsx` | Assemble it, seal it, read it, export it |
 
 ## Media comes first

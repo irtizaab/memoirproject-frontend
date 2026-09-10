@@ -91,5 +91,4 @@ export type UploadTicket = z.infer<typeof uploadTicketSchema>;
  * sent.
  */
 export type UploadCredential =
-  | { kind: "owner" }
-  | { kind: "link"; linkToken: string };
+  { kind: "owner" } | { kind: "link"; linkToken: string };

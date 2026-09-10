@@ -1,6 +1,6 @@
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 /**
  * The hairline rule that divides a page header from its body, and one section
@@ -17,8 +17,8 @@ function Separator({
   decorative = true,
   ...props
 }: React.ComponentProps<"div"> & {
-  orientation?: "horizontal" | "vertical"
-  decorative?: boolean
+  orientation?: "horizontal" | "vertical";
+  decorative?: boolean;
 }) {
   return (
     <div
@@ -28,11 +28,11 @@ function Separator({
       className={cn(
         "shrink-0 bg-border",
         orientation === "horizontal" ? "h-px w-full" : "h-full w-px",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
-export { Separator }
+export { Separator };

@@ -44,7 +44,7 @@ export function MemoryCard({ memory }: { memory: Memory }) {
   return (
     <Link
       href={`/archive/${memory.id}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-paper-deep transition-colors hover:border-ink-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-lift transition-colors hover:border-ink-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       {lead && (
         /* A signed, expiring URL from a private bucket. `next/image` cannot
@@ -53,23 +53,25 @@ export function MemoryCard({ memory }: { memory: Memory }) {
         <img
           src={lead.url ?? ""}
           alt={memory.title ?? "A photograph from this memoir"}
-          className="h-44 w-full object-cover"
+          className="h-[150px] w-full object-cover"
         />
       )}
 
-      <div className="flex flex-1 flex-col gap-3 p-5">
-        <p className="eyebrow">{labelForKind(memory.kind)}</p>
-
-        {happenedOn && <p className="eyebrow-muted">{happenedOn}</p>}
+      <div className="flex flex-1 flex-col gap-3 p-[22px]">
+        {/* Kind left, date right, on one baseline — the card's masthead. */}
+        <div className="flex items-baseline justify-between gap-2.5">
+          <p className="eyebrow">{labelForKind(memory.kind)}</p>
+          {happenedOn && <p className="eyebrow-muted">{happenedOn}</p>}
+        </div>
 
         {memory.title && (
-          <h3 className="font-heading text-xl leading-snug font-normal text-balance group-hover:text-seal">
+          <h3 className="font-heading text-[19px] leading-snug font-normal text-balance group-hover:text-seal">
             {memory.title}
           </h3>
         )}
 
         {memory.body_text && (
-          <p className="font-sans text-sm leading-relaxed text-muted-foreground">
+          <p className="font-sans text-[13.5px] leading-relaxed text-muted-foreground">
             {excerpt(memory.body_text)}
           </p>
         )}
@@ -110,7 +112,7 @@ export function MemoryCard({ memory }: { memory: Memory }) {
           `is_owner`, not a name comparison: a contributor who types the
           owner's name is still a contributor.
         */}
-        <p className="mt-auto pt-2 font-sans text-xs text-ink-faint">
+        <p className="mt-auto pt-5 font-sans text-xs text-ink-faint">
           {memory.is_owner ? (
             "You"
           ) : (

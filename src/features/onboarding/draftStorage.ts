@@ -14,7 +14,10 @@
  * explicit `X-Draft-Token` header instead.
  */
 
-import { draftCreatedSchema, type DraftCreated } from "@/features/onboarding/schemas";
+import {
+  draftCreatedSchema,
+  type DraftCreated,
+} from "@/features/onboarding/schemas";
 
 const STORAGE_KEY = "memoir.draft";
 

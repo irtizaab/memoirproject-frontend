@@ -4,13 +4,21 @@
 
 export { ContributorsScreen } from "@/features/contributors/components/ContributorsScreen";
 export { ContributorMemories } from "@/features/contributors/components/ContributorMemories";
+export { PeopleList } from "@/features/contributors/components/PeopleList";
 export {
   contributorKeys,
   useContributors,
   useMergeContributors,
   useReissueLink,
 } from "@/features/contributors/hooks";
-export { duplicateGroups } from "@/features/contributors/utils";
+export {
+  contributorRuns,
+  describeContribution,
+  duplicateGroups,
+  isPending,
+  relationshipOf,
+} from "@/features/contributors/utils";
+export type { ContributorRun } from "@/features/contributors/utils";
 export type {
   Contributor,
   ContributorsOverview,

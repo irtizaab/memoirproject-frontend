@@ -13,7 +13,7 @@ A page with a `fetch` call, a URL, or business logic in it belongs in `src/featu
 | `providers.tsx` | The single `"use client"` boundary at the root: query client + devtools. |
 | `error.tsx` | Route-level error boundary. Catches server-path failures. |
 | `page.tsx` | `/` — redirects to `/archive`. There is no landing page yet. |
-| `(app)/layout.tsx` | Chrome for every signed-in screen: header, centred column, footer, session guard. |
+| `(app)/layout.tsx` | Chrome for every signed-in screen: header, footer, session guard. **Not** a centred column — see below. |
 | `<route>/page.tsx` | One folder per route. See `example/`. |
 
 ## Route groups
@@ -27,7 +27,7 @@ Three routes sit outside it on purpose:
 | --- | --- |
 | `/onboarding` | Reached before an account exists, so there is nowhere to navigate to. |
 | `/j/[token]` | A contributor. They have no account and never will, so the signed-in nav would be a set of dead ends. |
-| `/m/[token]` | A reader of the finished memoir. Same reason — and it is also the only screen wider than one column, which `(app)`'s centred `max-w-5xl` could not hold. |
+| `/m/[token]` | A reader of the finished memoir. Same reason — and it is also the only screen wider than one column, which the app's `max-w-5xl` measure could not hold. |
 | `/m/[token]/search` | The same reader, searching. Server-rendered as far as the door; the results themselves change as somebody types, so they are a client component. |
 
 `/search` inside `(app)` is its twin: the same screen, the same corpus, the
@@ -50,3 +50,18 @@ server component precisely because `providers.tsx` carries the directive instead
 - Add a nested `error.tsx` when a section should be able to fail without taking the route with it.
 - Add `loading.tsx` next to a page to stream a fallback while its data resolves.
 - `params` and `searchParams` are **async** in Next.js 16 — `await` them before use.
+
+## Bands, not a centred column
+
+`(app)/layout.tsx` renders `main` at full width. Screens centre themselves with
+`PageHeader` and `PageBody` from `src/components/layout/`.
+
+That is the whole visual structure of the product: a page is bands at different
+weights — a `--paper-deep` title band with a rule under it, then the ordinary
+page — rather than sections at one weight separated by air. A band has to run
+edge to edge, and it cannot if the layout has already wrapped a centred column
+round it.
+
+The practical rule: a page here composes a feature component, and that feature
+component opens with `<PageHeader>` and puts its content in `<PageBody>`. Do not
+add padding or a `max-w-*` back into the layout.

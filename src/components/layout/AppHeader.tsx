@@ -45,6 +45,7 @@ type NavItem = {
 const NAV: NavItem[] = [
   { href: "/archive", label: "Archive", exact: true },
   { href: "/archive/new", label: "New memory" },
+  { href: "/questions", label: "Questions" },
   { href: "/contributors", label: "Contributors" },
   { href: "/billing", label: "Billing" },
 ];
@@ -102,10 +103,12 @@ export function AppHeader() {
 
   const user = session?.user;
   const metadata = user?.user_metadata as
-    | { full_name?: string; name?: string }
-    | undefined;
+    { full_name?: string; name?: string } | undefined;
   const initials = user
-    ? initialsFrom(metadata?.full_name ?? metadata?.name ?? "", user.email ?? "")
+    ? initialsFrom(
+        metadata?.full_name ?? metadata?.name ?? "",
+        user.email ?? "",
+      )
     : "";
 
   async function signOut() {

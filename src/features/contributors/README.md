@@ -8,6 +8,7 @@ The owner's view of who is in the memoir, and the link that let them in.
 | `api.ts` | `listContributors`, `reissueLink` |
 | `hooks.ts` | `useContributors`, `useReissueLink` |
 | `components/ContributorsScreen.tsx` | `/contributors` |
+| `components/PeopleList.tsx` | The hairline rows of people, shared with `/archive` |
 
 ## Three states per person
 

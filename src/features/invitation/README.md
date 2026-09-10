@@ -83,3 +83,49 @@ above the form says so, and it is true rather than reassuring.
   endpoint needs no credential, so the subject's name arrives as HTML.
 - **Client** (`hooks.ts`) does everything after. Recording audio is not
   something a server can do.
+
+### The questions above the form
+
+Once somebody has contributed once, `useContributorQuestions` fetches the four
+or five questions written for people in their relationship group and the form
+shows them above the composer — things to write *about*, not a field each.
+There is still one box. Somebody can answer one of them, four, or none.
+
+They come from `GET /j/{token}/questions`, which takes both credentials for the
+same reason `listMyContributions` does: the link says which memoir, the
+participant token says which person, and therefore which group.
+
+Nothing renders before the first contribution, because until then there is no
+participant token and nobody to write questions for. That is the honest state,
+not a gap — the invitation card and the form are enough to start with.
+
+The owner decides what is in the library, on `/questions`. See
+`features/questions/README.md`; this feature only reads it.
+
+**What the backend refuses to send here, and this feature therefore never
+holds:** no ids for rows a contributor cannot edit, no `source` saying which
+questions a model drafted, no mode, and above all not `subject_notes` — the
+owner's own words about the person, written to produce questions and not to be
+read by whoever the link was forwarded to. `ContributorQuestions` on the
+backend is where that line is held; `questionsSchema` here is the second half.
+
+No numbering, no "answered" state, no count of what is left. A ticked-off list
+of questions is the progress bar the product forbids.
+
+### Asking how somebody knew them
+
+The chips beside the name field send `relationship`, reusing `RELATIONS` from
+`features/onboarding` verbatim — the mapping is the same in both directions, and
+a second copy is a second place for the enum to drift. "Someone else" is
+appended because this audience is wider than onboarding's: the link reaches
+cousins, colleagues and neighbours, and making them pick the closest of four
+wrong answers would put them in a group whose questions are not for them.
+
+Two things read the answer. The reader prints it under their name in a credit
+line, and the question library picks what they are asked from it. Until this
+existed, `resolve_participant` wrote `'other'` for everybody, hardcoded.
+
+It is **optional and says so**. Somebody who does not want to categorise their
+relationship to a person they have lost should not have to in order to leave a
+memory. Omitting it sends nothing rather than `other`, so the backend leaves
+whatever they said last time alone instead of overwriting it.

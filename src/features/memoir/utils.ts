@@ -178,7 +178,12 @@ export type Run = {
   threads: string[];
 };
 
-type Mark = { id: string; kind: "source" | "thread"; start: number; end: number };
+type Mark = {
+  id: string;
+  kind: "source" | "thread";
+  start: number;
+  end: number;
+};
 
 /**
  * Splits a paragraph into runs, each knowing which sources and which comment

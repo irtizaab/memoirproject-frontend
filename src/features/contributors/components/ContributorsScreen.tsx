@@ -1,48 +1,27 @@
 "use client";
 
-import Link from "next/link";
-import { Merge } from "lucide-react";
+import { Merge, UserPlus } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 
+import { PageBody } from "@/components/layout/PageBody";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { useActiveMemoir } from "@/features/account";
+import { PeopleList } from "@/features/contributors/components/PeopleList";
 import {
   useContributors,
   useMergeContributors,
   useReissueLink,
 } from "@/features/contributors/hooks";
 import type { Contributor } from "@/features/contributors/schemas";
-import { duplicateGroups } from "@/features/contributors/utils";
+import {
+  contributorRuns,
+  describeContribution,
+  duplicateGroups,
+} from "@/features/contributors/utils";
 import { useTransientLabel } from "@/hooks/useTransientLabel";
 
 const subscribeToNothing = () => () => {};
-
-/**
- * What one person's presence in the memoir amounts to, in a phrase.
- *
- * Three genuinely different states, and the middle one is the whole reason
- * this screen exists: somebody opened the link and did not write anything.
- * That is a person to ring, not a number to chase — so it is stated plainly
- * and given no badge, no counter, and no reminder button.
- */
-function describe(person: Contributor): string {
-  if (person.memory_count > 0) {
-    return person.memory_count === 1
-      ? "1 memory"
-      : `${person.memory_count} memories`;
-  }
-  if (person.first_opened_at) return "Opened, nothing yet";
-  return "Has not opened the link";
-}
-
-function relationshipOf(person: Contributor): string {
-  if (person.relationship_label?.trim()) return person.relationship_label;
-  if (person.role === "owner") return "Owner";
-  if (person.relationship === "other") return "Contributor";
-  return person.relationship.replaceAll("_", " ");
-}
 
 /**
  * One group of same-named entries, with a merge for each of the extras.
@@ -65,19 +44,18 @@ function DuplicateGroup({
   const [keeping, ...others] = group;
 
   return (
-    <div className="space-y-2 border-t border-rule pt-4">
-      <p className="font-sans text-sm">
-        <span className="font-medium">{keeping.display_name}</span>
-        <span className="text-ink-soft"> · {describe(keeping)}</span>
-      </p>
-
+    <div className="border-t border-border pt-4">
       {others.map((other) => (
         <div
           key={other.id}
-          className="flex flex-wrap items-center justify-between gap-3"
+          className="flex flex-wrap items-baseline justify-between gap-4 py-1.5"
         >
-          <p className="font-sans text-sm text-ink-soft">
-            and another with {describe(other).toLowerCase()}
+          <p className="font-sans text-[13px] text-muted-foreground">
+            <span className="font-heading text-[17px] text-foreground">
+              {keeping.display_name}
+            </span>{" "}
+            &middot; {describeContribution(keeping).toLowerCase()}, and another
+            with {describeContribution(other).toLowerCase()}
           </p>
           <Button
             variant="outline"
@@ -94,15 +72,32 @@ function DuplicateGroup({
   );
 }
 
+/**
+ * "Everyone who remembers." — people first, link management last.
+ *
+ * The three runs are the point. "Has not opened the link" used to be
+ * right-aligned grey text on row six of a flat list, and it is the question an
+ * owner actually opens this page with: who is missing. Grouping answers it
+ * without a badge, a counter or a reminder button — the middle run is a set of
+ * people to ring, not a funnel to optimise.
+ *
+ * The link box and revoke sit at the bottom under a rule. They are maintenance,
+ * not the subject of the page, and they used to be the first thing on it.
+ */
 export function ContributorsScreen() {
   const { memoir } = useActiveMemoir();
   const { data, isPending } = useContributors(memoir?.id ?? null);
   const reissue = useReissueLink(memoir?.id ?? null);
   const merge = useMergeContributors(memoir?.id ?? null);
 
-  const duplicates = duplicateGroups(data?.participants ?? []);
+  const participants = data?.participants ?? [];
+  const runs = contributorRuns(participants);
+  const duplicates = duplicateGroups(participants);
 
-  const [copyLabel, showCopyLabel] = useTransientLabel("Copy link");
+  const [copyLabel, showCopyLabel] = useTransientLabel("Copy");
+  const [headerCopyLabel, showHeaderCopyLabel] = useTransientLabel(
+    "Copy the invite link",
+  );
   const [confirming, setConfirming] = useState(false);
 
   const origin = useSyncExternalStore(
@@ -114,9 +109,9 @@ export function ContributorsScreen() {
   const link = data?.link ?? null;
   const inviteUrl = link ? `${origin}/j/${link.token}` : null;
 
-  function copyLink() {
+  function copyLink(show: (label: string, ms: number) => void) {
     if (!inviteUrl) return;
-    const done = () => showCopyLabel("Copied", 1800);
+    const done = () => show("Copied", 1800);
     if (navigator.clipboard) {
       navigator.clipboard.writeText(inviteUrl).then(done, done);
     } else {
@@ -129,115 +124,93 @@ export function ContributorsScreen() {
     setConfirming(false);
   }
 
+  /*
+    What the page can honestly say about who is where.
+
+    Note what it does not say: how many people were *invited*. There is one link
+    for everyone and a participant row only exists once somebody arrives, so a
+    count of invitations is not something this product knows. The link's own
+    `open_count` is the honest version of that sentence.
+  */
+  const added = runs.find((run) => run.key === "added")?.people.length ?? 0;
+  const quiet = runs.find((run) => run.key === "quiet")?.people.length ?? 0;
+
+  const summary = isPending
+    ? "Looking…"
+    : participants.length === 0
+      ? "Nobody has opened the link yet. Nothing is wrong — waiting is the normal state of this."
+      : [
+          added === 0
+            ? "Nobody has written anything yet"
+            : added === 1
+              ? "One person has written something"
+              : `${added} people have written something`,
+          quiet > 0 &&
+            (quiet === 1
+              ? "one opened it and left nothing"
+              : `${quiet} opened it and left nothing`),
+        ]
+          .filter(Boolean)
+          .join(", ") + ".";
+
   return (
-    <div className="space-y-10">
+    <>
       <PageHeader
         eyebrow="Contributors"
         title="Everyone who remembers."
-        description="The people you have invited, what they have added, and the single link that let them in."
+        description={summary}
+        action={
+          <Button
+            onClick={() => copyLink(showHeaderCopyLabel)}
+            disabled={!inviteUrl}
+          >
+            <UserPlus aria-hidden />
+            {headerCopyLabel}
+          </Button>
+        }
       />
 
-      <section className="space-y-4">
-        <p className="eyebrow">The link to share</p>
-
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-paper-deep px-5 py-4">
-          <code className="min-w-48 flex-1 font-mono text-sm break-all">
-            {inviteUrl
-              ? inviteUrl.replace(/^https?:\/\//, "")
-              : isPending
-                ? "Fetching your link…"
-                : "No live link. Issue a new one below."}
-          </code>
-          <Button variant="outline" onClick={copyLink} disabled={!inviteUrl}>
-            {copyLabel}
-          </Button>
-        </div>
-
-        {link && (
-          <p className="font-sans text-sm text-muted-foreground">
-            {/* A fact, stated once. Not a target and not next to a goal. */}
-            Opened {link.open_count === 1 ? "once" : `${link.open_count} times`}.
-          </p>
-        )}
-
-        <Separator />
-
-        {confirming ? (
-          <div className="space-y-3 rounded-lg border border-seal bg-seal-wash p-5">
-            <p className="font-sans text-sm leading-relaxed">
-              Issuing a new link kills this one immediately. Anyone still
-              holding the old address — including people who meant to
-              contribute later — will not be able to get in, and you will need
-              to send the new link to everybody again.
-            </p>
-            <p className="font-sans text-sm leading-relaxed text-muted-foreground">
-              Nothing already contributed is affected.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={confirmReissue} disabled={reissue.isPending}>
-                {reissue.isPending ? "Issuing…" : "Issue a new link"}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => setConfirming(false)}
-                disabled={reissue.isPending}
-              >
-                Keep the current link
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-4">
-            <Button variant="ghost" onClick={() => setConfirming(true)}>
-              Revoke and issue a new link
-            </Button>
-            <p className="font-sans text-xs text-ink-faint">
-              If the link has travelled further than you meant it to.
-            </p>
-          </div>
-        )}
-
-        {reissue.error && (
-          <p role="alert" className="font-sans text-sm text-seal">
-            The link could not be reissued. {reissue.error.message}
-          </p>
-        )}
-      </section>
-
-      <section className="space-y-5">
-        <h2 className="font-heading text-2xl font-normal">In this memoir</h2>
-
+      <PageBody className="flex flex-col gap-10">
+        {/* ---------------------------------------------------------- */}
+        {/* Three runs, because "who has not answered" is the question  */}
+        {/* ---------------------------------------------------------- */}
         {isPending ? (
           <p className="font-sans text-sm text-ink-faint">Looking…</p>
         ) : (
-          <ul className="border-t border-border">
-            {data?.participants.map((person) => (
-              <li key={person.id} className="border-b border-border">
-                {/*
-                  A link now, not an inert row. "Who is in this memoir" and
-                  "what did they leave" are different questions, and the second
-                  one had no answer anywhere in the product — which is the one
-                  the owner actually has when an unfamiliar name appears.
-                */}
-                <Link
-                  href={`/contributors/${person.id}`}
-                  className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-4 transition-colors hover:text-seal"
+          runs.map((run) => (
+            <section key={run.key}>
+              <div className="flex flex-wrap items-baseline justify-between gap-4 border-b border-ink pb-2.5">
+                <h2
+                  className={`font-heading text-[21px] font-normal tracking-tight ${
+                    run.key === "added"
+                      ? ""
+                      : run.key === "quiet"
+                        ? "text-muted-foreground"
+                        : "text-ink-faint"
+                  }`}
                 >
-                  <span className="flex-1 font-heading text-lg">
-                    {person.display_name}
-                  </span>
-                  <span className="eyebrow-muted">{relationshipOf(person)}</span>
-                  <span
-                    className={`min-w-32 text-right font-sans text-sm ${
-                      person.memory_count > 0 ? "text-ink-soft" : "text-ink-faint"
-                    }`}
-                  >
-                    {describe(person)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+                  {run.label}
+                </h2>
+                <span className="eyebrow-muted">
+                  {run.key === "quiet"
+                    ? "Worth a phone call, not a reminder"
+                    : run.people.length === 1
+                      ? "One person"
+                      : `${run.people.length} people`}
+                </span>
+              </div>
+              {/*
+                A link, not an inert row. "Who is in this memoir" and "what did
+                they leave" are different questions, and the second one had no
+                answer anywhere in the product — which is the one the owner
+                actually has when an unfamiliar name appears.
+              */}
+              <PeopleList
+                people={run.people}
+                href={(person) => `/contributors/${person.id}`}
+              />
+            </section>
+          ))
         )}
 
         {/*
@@ -250,45 +223,126 @@ export function ContributorsScreen() {
           who knows their own family, answers.
         */}
         {duplicates.length > 0 && (
-          <div className="space-y-4 rounded-lg border border-seal bg-seal-wash p-5">
-            <div>
-              <p className="font-sans text-sm font-medium text-seal">
-                {duplicates.length === 1
-                  ? "One name appears twice"
-                  : `${duplicates.length} names appear more than once`}
-              </p>
-              <p className="mt-1 font-sans text-sm leading-relaxed text-ink-soft">
-                Usually this is one person who opened the link on a second
-                device. Sometimes it is two people who share a name — so nothing
-                is combined unless you say so.
-              </p>
+          <section className="border border-seal px-6 py-5">
+            <p className="font-heading text-[17px] font-normal">
+              {duplicates.length === 1
+                ? "One name appears twice"
+                : `${duplicates.length} names appear more than once`}
+            </p>
+            <p className="mt-2.5 max-w-[74ch] font-sans text-[13px] leading-relaxed text-muted-foreground">
+              Usually this is one person who opened the link on a second device.
+              Sometimes it is two people who share a name — so nothing is
+              combined unless you say so.
+            </p>
+
+            <div className="mt-4 flex flex-col gap-2">
+              {duplicates.map((group) => (
+                <DuplicateGroup
+                  key={group[0].id}
+                  group={group}
+                  onMerge={(loserId, winnerId) =>
+                    merge.mutate({ loserId, winnerId })
+                  }
+                  busy={merge.isPending}
+                />
+              ))}
             </div>
 
-            {duplicates.map((group) => (
-              <DuplicateGroup
-                key={group[0].id}
-                group={group}
-                onMerge={(loserId, winnerId) =>
-                  merge.mutate({ loserId, winnerId })
-                }
-                busy={merge.isPending}
-              />
-            ))}
-
             {merge.error && (
-              <p role="alert" className="font-sans text-sm text-seal">
+              <p role="alert" className="mt-3 font-sans text-sm text-seal">
                 Those could not be combined. {merge.error.message}
               </p>
             )}
-          </div>
+          </section>
         )}
 
-        <p className="font-sans text-xs leading-relaxed text-ink-faint">
-          Contributors never make an account. They are recognised by the link
-          they were sent, which is why the same person can add something today
-          and something more next week.
-        </p>
-      </section>
-    </div>
+        {/* ---------------------------------------------------------- */}
+        {/* Demoted. Maintenance, not the subject of the page.          */}
+        {/* ---------------------------------------------------------- */}
+        <section className="grid gap-10 border-t border-border pt-7 md:grid-cols-2">
+          <div>
+            <p className="eyebrow">The link that let them in</p>
+
+            <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3.5 border border-border bg-paper-deep py-3.5 pr-3.5 pl-5">
+              <span className="min-w-0 font-sans text-[13.5px] break-all">
+                {inviteUrl
+                  ? inviteUrl.replace(/^https?:\/\//, "")
+                  : isPending
+                    ? "Fetching your link…"
+                    : "No live link. Issue a new one."}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyLink(showCopyLabel)}
+                disabled={!inviteUrl}
+              >
+                {copyLabel}
+              </Button>
+            </div>
+
+            <p className="mt-3 font-sans text-xs leading-relaxed text-ink-faint">
+              {/* A fact, stated once. Not a target and not next to a goal. */}
+              {link &&
+                `Opened ${link.open_count === 1 ? "once" : `${link.open_count} times`}. `}
+              Contributors never make an account — they are recognised by the
+              link they were sent, which is why the same person can add
+              something today and something more next week.
+            </p>
+          </div>
+
+          <div>
+            <p className="eyebrow">If it has travelled too far</p>
+
+            {confirming ? (
+              <div className="mt-3.5">
+                <p className="max-w-[46ch] font-sans text-[13px] leading-relaxed">
+                  Issuing a new link kills this one immediately. Anyone still
+                  holding the old address — including people who meant to
+                  contribute later — will not be able to get in, and you will
+                  need to send the new link to everybody again.
+                </p>
+                <p className="mt-2 font-sans text-[13px] leading-relaxed text-muted-foreground">
+                  Nothing already contributed is affected.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Button onClick={confirmReissue} disabled={reissue.isPending}>
+                    {reissue.isPending ? "Issuing…" : "Issue a new link"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setConfirming(false)}
+                    disabled={reissue.isPending}
+                  >
+                    Keep the current link
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="mt-3.5 max-w-[46ch] font-sans text-[13px] leading-relaxed text-muted-foreground">
+                  Issuing a new link kills this one immediately. Anyone still
+                  holding the old address will not be able to get in. Nothing
+                  already contributed is affected.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setConfirming(true)}
+                  className="mt-4 border-b border-border pb-0.5 font-sans text-[13px] text-muted-foreground transition-colors hover:text-seal"
+                >
+                  Revoke and issue a new link
+                </button>
+              </>
+            )}
+
+            {reissue.error && (
+              <p role="alert" className="mt-3 font-sans text-sm text-seal">
+                The link could not be reissued. {reissue.error.message}
+              </p>
+            )}
+          </div>
+        </section>
+      </PageBody>
+    </>
   );
 }

@@ -87,9 +87,10 @@ export function storeReaderSession(
     [readerCookieName(token), session],
     [readerNameCookieName(token), name],
   ]) {
-    document.cookie = [`${key}=${encodeURIComponent(value)}`, ...attributes].join(
-      "; ",
-    );
+    document.cookie = [
+      `${key}=${encodeURIComponent(value)}`,
+      ...attributes,
+    ].join("; ");
   }
 }
 
@@ -97,8 +98,7 @@ export function storeReaderSession(
 export function clearReaderSession(token: string): void {
   if (typeof document === "undefined") return;
 
-  document.cookie =
-    `${readerCookieName(token)}=; path=/m/${encodeURIComponent(token)}; max-age=0`;
+  document.cookie = `${readerCookieName(token)}=; path=/m/${encodeURIComponent(token)}; max-age=0`;
 }
 
 /* -------------------------------------------------------------------------

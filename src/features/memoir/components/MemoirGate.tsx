@@ -155,7 +155,9 @@ export function MemoirGate({
       <div className="rounded-2xl border border-border bg-card p-7 shadow-sm">
         <p className="eyebrow">A shared family memoir</p>
         <h1 className="mt-2 font-heading text-2xl leading-tight font-normal">
-          {subjectName ? `The memoir of ${subjectName}` : "This memoir is private"}
+          {subjectName
+            ? `The memoir of ${subjectName}`
+            : "This memoir is private"}
         </h1>
         <p className="mt-3 font-sans text-sm leading-relaxed text-muted-foreground">
           It opens with the passphrase whoever shared the link gave you. Your

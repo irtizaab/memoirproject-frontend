@@ -21,7 +21,11 @@ import type {
   AccountOverview,
   MemoirSummary,
 } from "@/features/account/schemas";
-import { claimDraft, createDraft, updateDraft } from "@/features/onboarding/api";
+import {
+  claimDraft,
+  createDraft,
+  updateDraft,
+} from "@/features/onboarding/api";
 import {
   clearStoredDraft,
   getDraftServerSnapshot,

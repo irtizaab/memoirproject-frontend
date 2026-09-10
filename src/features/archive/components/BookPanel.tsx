@@ -5,23 +5,31 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BookOpen, Download, Loader2, Lock, Sparkles } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { MemoirSummary } from "@/features/account";
 import {
   useAssembleMemoir,
   useExportMemoir,
   usePublishMemoir,
 } from "@/features/archive/hooks";
-import { publishFormSchema, type PublishFormValues } from "@/features/archive/schemas";
+import {
+  publishFormSchema,
+  type PublishFormValues,
+} from "@/features/archive/schemas";
 import { useTransientLabel } from "@/hooks/useTransientLabel";
 
 /**
  * What becomes of the archive: the book, and the ways out of it.
  *
- * Sits beside `InviteBanner`, and the two are deliberately a pair — one
- * collects material, this one turns it into something. It is the only place in
- * the signed-in app that points at `/m/[token]`, and the only place a memoir
- * can be sealed.
+ * It sits under a hairline in the archive's opening band, directly below the
+ * book cover and the line the owner wrote — so the band answers, in order, who
+ * the book is for and what state it is in. It carries no card of its own for
+ * that reason: a raised sheet inside a band would be a second surface where the
+ * band already is one.
+ *
+ * It is the only place in the signed-in app that points at `/m/[token]`, and
+ * the only place a memoir can be sealed.
  *
  * ---------------------------------------------------------------------------
  * Nothing here appears before there is something to point at
@@ -73,18 +81,17 @@ export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="eyebrow">The book</p>
-          <h2 className="mt-1.5 font-heading text-xl leading-snug font-normal">
+    <section className="pt-6">
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div className="max-w-[52ch]">
+          <h2 className="font-heading text-xl leading-snug font-normal">
             {assembled
               ? published
                 ? "Sealed, and open to read"
                 : "Assembled, not yet sealed"
               : "Nothing has been assembled yet"}
           </h2>
-          <p className="mt-2 max-w-prose font-sans text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-2 font-sans text-sm leading-relaxed text-muted-foreground">
             {assembled
               ? published
                 ? "Anyone with the link and the passphrase can read it. Nothing in it can change; what they add to the margins can."
@@ -93,11 +100,11 @@ export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex shrink-0 flex-wrap items-center gap-2.5">
           {assembled && memoir?.view_token && (
             <a
               href={`/m/${memoir.view_token}`}
-              className="inline-flex items-center gap-2 rounded-full border border-input bg-background px-4 py-2 font-sans text-sm text-ink-soft transition-colors hover:text-foreground"
+              className={buttonVariants({ variant: "outline" })}
             >
               <BookOpen aria-hidden className="size-4" />
               View the memoir
@@ -187,12 +194,11 @@ export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
               <label htmlFor="passphrase" className="eyebrow-muted block">
                 A passphrase for your family
               </label>
-              <input
+              <Input
                 id="passphrase"
                 autoComplete="off"
                 placeholder="the house on ellsworth lane"
                 {...register("passphrase")}
-                className="block w-full rounded-xl border border-input bg-background px-3.5 py-2.5 font-sans text-sm text-foreground placeholder:text-ink-faint focus:border-seal focus:outline-none"
               />
               <p className="font-sans text-xs leading-relaxed text-ink-faint">
                 You will tell people this yourself, separately from the link.

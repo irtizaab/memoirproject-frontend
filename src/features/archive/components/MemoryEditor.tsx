@@ -1,17 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Check, ImageIcon, Mic } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { PageBody } from "@/components/layout/PageBody";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useActiveMemoir } from "@/features/account";
 import {
   useAttachAssets,
@@ -23,7 +21,12 @@ import {
   memoryFormSchema,
   type MemoryFormValues,
 } from "@/features/archive/schemas";
-import { PhotoPicker, VoiceRecorder, uploadAll, useAttachments } from "@/features/media";
+import {
+  PhotoPicker,
+  VoiceRecorder,
+  uploadAll,
+  useAttachments,
+} from "@/features/media";
 import { isApiError } from "@/lib/api/errors";
 
 /**
@@ -48,7 +51,11 @@ import { isApiError } from "@/lib/api/errors";
 export function MemoryEditor({ memoryId }: { memoryId: string }) {
   const router = useRouter();
   const { memoir } = useActiveMemoir();
-  const { data: memory, isPending, error } = useMemory(memoir?.id ?? null, memoryId);
+  const {
+    data: memory,
+    isPending,
+    error,
+  } = useMemory(memoir?.id ?? null, memoryId);
 
   const update = useUpdateMemory(memoir?.id ?? null);
   const attach = useAttachAssets(memoir?.id ?? null);
@@ -59,7 +66,9 @@ export function MemoryEditor({ memoryId }: { memoryId: string }) {
   const additions = useAttachments(["voice", "photo"]);
   const [isUploading, setIsUploading] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const [confirmingAssetId, setConfirmingAssetId] = useState<string | null>(null);
+  const [confirmingAssetId, setConfirmingAssetId] = useState<string | null>(
+    null,
+  );
 
   const form = useForm<MemoryFormValues>({
     resolver: zodResolver(memoryFormSchema),
@@ -85,30 +94,40 @@ export function MemoryEditor({ memoryId }: { memoryId: string }) {
     });
   }, [memory, memoryId, reset, formState.isDirty]);
 
-  const busy = isUploading || update.isPending || attach.isPending || remove.isPending;
+  const busy =
+    isUploading || update.isPending || attach.isPending || remove.isPending;
 
   if (isPending && !memory) {
-    return <p className="font-sans text-sm text-ink-faint">Opening this memory…</p>;
+    return (
+      <p className="font-sans text-sm text-ink-faint">Opening this memory…</p>
+    );
   }
 
   if (error || !memory) {
     const missing = isApiError(error) && error.status === 404;
     return (
-      <div className="space-y-6">
+      <>
         <PageHeader
           eyebrow="Archive"
-          title={missing ? "That memory is not here." : "That could not be opened."}
+          title={
+            missing ? "That memory is not here." : "That could not be opened."
+          }
           description={
             missing
               ? "It may have been deleted, or the link may belong to a different archive."
               : "Something went wrong reaching the archive. Trying again usually settles it."
           }
         />
-        <Link href="/archive" className={buttonVariants({ variant: "outline" })}>
-          <ArrowLeft aria-hidden />
-          Back to the archive
-        </Link>
-      </div>
+        <PageBody>
+          <Link
+            href="/archive"
+            className={buttonVariants({ variant: "outline" })}
+          >
+            <ArrowLeft aria-hidden />
+            Back to the archive
+          </Link>
+        </PageBody>
+      </>
     );
   }
 
@@ -202,176 +221,208 @@ export function MemoryEditor({ memoryId }: { memoryId: string }) {
       router.push(`/archive/${memoryId}`);
     } catch (cause) {
       setIsUploading(false);
-      setProblem(explain(cause, "That could not be saved. Nothing has been lost."));
+      setProblem(
+        explain(cause, "That could not be saved. Nothing has been lost."),
+      );
     }
   }
 
   return (
-    <div className="space-y-10">
-      <Link
-        href={`/archive/${memoryId}`}
-        className="inline-flex items-center gap-2 font-sans text-sm text-ink-soft transition-colors hover:text-foreground"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Back to this memory
-      </Link>
-
-      <PageHeader
-        eyebrow="Editing"
-        title={memory.title ?? "An untitled memory"}
-        description="Change what was written, or add and remove what came with it. Removing a photograph or a recording deletes it."
-      />
-
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="space-y-2">
-          <Label htmlFor="title">Title</Label>
-          <Input
-            id="title"
-            placeholder="A name for this moment"
-            disabled={busy}
-            {...form.register("title")}
-          />
-          {form.formState.errors.title && (
-            <p className="font-sans text-sm text-seal">
-              {form.formState.errors.title.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="body_text">What happened?</Label>
-          <Textarea
-            id="body_text"
-            placeholder="Write down the feeling, the details, or simply the first thing you can recall…"
-            disabled={busy}
-            {...form.register("body_text")}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="happened_on">When was this? (optional)</Label>
-          <Input
-            id="happened_on"
-            type="date"
-            className="max-w-xs"
-            disabled={busy}
-            {...form.register("happened_on")}
-          />
-          {form.formState.errors.happened_on && (
-            <p className="font-sans text-sm text-seal">
-              {form.formState.errors.happened_on.message}
-            </p>
-          )}
-        </div>
-
-        {recordings.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="font-heading text-lg font-normal">
-              {recordings.length === 1
-                ? "The recording already here"
-                : "The recordings already here"}
-            </h2>
-            <ul className="space-y-3">
-              {recordings.map((asset) => (
-                <li
-                  key={asset.id}
-                  className="space-y-3 rounded-lg border border-border bg-paper-deep p-4"
-                >
-                  <audio controls src={asset.url ?? ""} className="w-full" />
-                  <ExistingAssetControls
-                    kind="recording"
-                    confirming={confirmingAssetId === asset.id}
-                    busy={busy}
-                    onAsk={() => setConfirmingAssetId(asset.id)}
-                    onCancel={() => setConfirmingAssetId(null)}
-                    onConfirm={() => removeExisting(asset.id)}
-                  />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {photos.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="font-heading text-lg font-normal">
-              {photos.length === 1
-                ? "The photograph already here"
-                : "The photographs already here"}
-            </h2>
-            <ul className="grid gap-4 sm:grid-cols-2">
-              {photos.map((asset) => (
-                <li
-                  key={asset.id}
-                  className="space-y-3 rounded-lg border border-border bg-paper-deep p-3"
-                >
-                  {/* A signed, expiring URL from a private bucket. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={asset.url ?? ""}
-                    alt="A photograph from this memory"
-                    className="w-full rounded object-contain"
-                  />
-                  <ExistingAssetControls
-                    kind="photograph"
-                    confirming={confirmingAssetId === asset.id}
-                    busy={busy}
-                    onAsk={() => setConfirmingAssetId(asset.id)}
-                    onCancel={() => setConfirmingAssetId(null)}
-                    onConfirm={() => removeExisting(asset.id)}
-                  />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <section className="space-y-6 border-t border-border pt-8">
-          <div className="flex items-center gap-2">
-            <Mic aria-hidden className="size-4 text-seal" />
-            <ImageIcon aria-hidden className="size-4 text-seal" />
-            <h2 className="font-heading text-lg font-normal">Add more</h2>
-          </div>
-
-          <VoiceRecorder
-            recordings={additions.recordings}
-            onRecorded={additions.addRecording}
-            onRemoved={additions.removeRecording}
-            disabled={busy}
-          />
-
-          <PhotoPicker
-            photos={additions.photos}
-            onPicked={additions.addPhotos}
-            onRemoved={additions.removePhoto}
-            disabled={busy}
-          />
-        </section>
-
-        {problem && (
-          <p role="alert" className="font-sans text-sm text-seal">
-            {problem}
-          </p>
-        )}
-
-        <div className="flex flex-wrap items-center gap-4 border-t border-border pt-6">
-          <Button type="submit" disabled={busy}>
-            <Check aria-hidden />
-            {isUploading
-              ? "Uploading…"
-              : update.isPending || attach.isPending
-                ? "Saving…"
-                : "Save changes"}
-          </Button>
+    <>
+      {/* The toolbar. Everything that acts on the memory, above the memory. */}
+      <div className="border-b border-border bg-paper-deep">
+        <div className="mx-auto w-full max-w-5xl px-6 pt-7 pb-8">
           <Link
             href={`/archive/${memoryId}`}
-            className={buttonVariants({ variant: "outline" })}
+            className="inline-flex items-center gap-2 font-sans text-[13px] text-muted-foreground transition-colors hover:text-foreground"
           >
-            Cancel
+            <ArrowLeft aria-hidden className="size-3.5" />
+            Back to this memory
           </Link>
+
+          <p className="eyebrow mt-5">Editing</p>
+          <h1 className="mt-3 font-heading text-[clamp(26px,4vw,32px)] leading-tight font-normal tracking-tight text-balance">
+            {memory.title ?? "An untitled memory"}
+          </h1>
+          <p className="mt-2.5 max-w-[62ch] font-sans text-sm leading-relaxed text-muted-foreground">
+            Change what was written, or add and remove what came with it.
+            Removing a photograph or a recording deletes it.
+          </p>
         </div>
-      </form>
-    </div>
+      </div>
+
+      <PageBody>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_272px] lg:items-start"
+        >
+          {/* ---------------------------------------------------------- */}
+          {/* The page you write on — the composer's twin                  */}
+          {/* ---------------------------------------------------------- */}
+          <div className="rounded-2xl border border-border bg-card p-7 shadow-lift sm:px-11 sm:pt-9 sm:pb-8">
+            <label htmlFor="title" className="eyebrow block">
+              Give this a title
+            </label>
+            <input
+              id="title"
+              placeholder="A name for this moment"
+              disabled={busy}
+              {...form.register("title")}
+              className="mt-2.5 block w-full border-0 border-b border-ink bg-transparent pb-2 font-heading text-[26px] font-light text-foreground placeholder:font-light placeholder:text-ink-faint placeholder:italic focus:border-seal focus:outline-none disabled:opacity-60"
+            />
+            {form.formState.errors.title && (
+              <p className="mt-2 font-sans text-sm text-seal">
+                {form.formState.errors.title.message}
+              </p>
+            )}
+
+            <label htmlFor="body_text" className="sr-only">
+              What happened?
+            </label>
+            <textarea
+              id="body_text"
+              rows={9}
+              placeholder="Write down the feeling, the details, or simply the first thing you can recall…"
+              disabled={busy}
+              {...form.register("body_text")}
+              className="mt-8 field-sizing-content block min-h-[300px] w-full resize-y border-0 bg-transparent font-heading text-[19px] leading-[1.72] font-light text-foreground placeholder:font-light placeholder:text-ink-faint placeholder:italic focus:outline-none disabled:opacity-60"
+            />
+
+            {recordings.length > 0 && (
+              <section className="mt-8 border-t border-border pt-6">
+                <h2 className="eyebrow">
+                  {recordings.length === 1
+                    ? "The recording already here"
+                    : "The recordings already here"}
+                </h2>
+                <ul className="mt-4 space-y-5">
+                  {recordings.map((asset) => (
+                    <li key={asset.id} className="space-y-3">
+                      <audio
+                        controls
+                        src={asset.url ?? ""}
+                        className="w-full border border-border bg-paper-deep p-2.5"
+                      />
+                      <ExistingAssetControls
+                        kind="recording"
+                        confirming={confirmingAssetId === asset.id}
+                        busy={busy}
+                        onAsk={() => setConfirmingAssetId(asset.id)}
+                        onCancel={() => setConfirmingAssetId(null)}
+                        onConfirm={() => removeExisting(asset.id)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {photos.length > 0 && (
+              <section className="mt-8 border-t border-border pt-6">
+                <h2 className="eyebrow">
+                  {photos.length === 1
+                    ? "The photograph already here"
+                    : "The photographs already here"}
+                </h2>
+                <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {photos.map((asset) => (
+                    <li key={asset.id} className="space-y-3">
+                      {/* A signed, expiring URL from a private bucket. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={asset.url ?? ""}
+                        alt="A photograph from this memory"
+                        className="w-full border border-border bg-paper-deep object-contain"
+                      />
+                      <ExistingAssetControls
+                        kind="photograph"
+                        confirming={confirmingAssetId === asset.id}
+                        busy={busy}
+                        onAsk={() => setConfirmingAssetId(asset.id)}
+                        onCancel={() => setConfirmingAssetId(null)}
+                        onConfirm={() => removeExisting(asset.id)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
+
+          {/* ---------------------------------------------------------- */}
+          {/* The rail                                                     */}
+          {/* ---------------------------------------------------------- */}
+          <div className="flex flex-col gap-7">
+            {/*
+              Both sections stay lit and there is no toggle here, so none of
+              the discard machinery in the composer applies: on this page they
+              are "add more", not "choose what this memory is".
+            */}
+            <section>
+              <p className="eyebrow">Add more to it</p>
+              <div className="mt-4 space-y-6">
+                <VoiceRecorder
+                  recordings={additions.recordings}
+                  onRecorded={additions.addRecording}
+                  onRemoved={additions.removeRecording}
+                  disabled={busy}
+                />
+                <PhotoPicker
+                  photos={additions.photos}
+                  onPicked={additions.addPhotos}
+                  onRemoved={additions.removePhoto}
+                  disabled={busy}
+                />
+              </div>
+            </section>
+
+            <div className="border-t border-border pt-5">
+              <label htmlFor="happened_on" className="eyebrow block">
+                When was this
+              </label>
+              <input
+                id="happened_on"
+                type="date"
+                disabled={busy}
+                {...form.register("happened_on")}
+                className="mt-3 block w-full border-0 border-b border-ink bg-transparent pb-2 font-heading text-[19px] font-light text-foreground focus:border-seal focus:outline-none disabled:opacity-60"
+              />
+              <p className="mt-2.5 font-sans text-xs leading-relaxed text-ink-faint">
+                Optional. A year is enough for the timeline to place it.
+              </p>
+              {form.formState.errors.happened_on && (
+                <p className="mt-2 font-sans text-sm text-seal">
+                  {form.formState.errors.happened_on.message}
+                </p>
+              )}
+            </div>
+
+            {problem && (
+              <p role="alert" className="font-sans text-sm text-seal">
+                {problem}
+              </p>
+            )}
+
+            <div className="border-t border-border pt-5">
+              <Button type="submit" disabled={busy} className="h-12 w-full">
+                <Check aria-hidden />
+                {isUploading
+                  ? "Uploading…"
+                  : update.isPending || attach.isPending
+                    ? "Saving…"
+                    : "Save changes"}
+              </Button>
+              <Link
+                href={`/archive/${memoryId}`}
+                className="mt-3.5 block text-center font-sans text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Cancel
+              </Link>
+            </div>
+          </div>
+        </form>
+      </PageBody>
+    </>
   );
 }
 
@@ -418,7 +469,13 @@ function ExistingAssetControls({
         Remove this {kind}? The file is deleted.
       </p>
       <span className="flex items-center gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={busy}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onCancel}
+          disabled={busy}
+        >
           Keep it
         </Button>
         <Button type="button" size="sm" onClick={onConfirm} disabled={busy}>

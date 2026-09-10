@@ -76,9 +76,7 @@ export async function signUpWithPassword(
   // no session — the user has to click a link first. Say so plainly instead of
   // letting the next step fail with an unexplained 401.
   if (!data.session) {
-    throw new Error(
-      "Check your email to confirm your address, then sign in.",
-    );
+    throw new Error("Check your email to confirm your address, then sign in.");
   }
   return data.session;
 }

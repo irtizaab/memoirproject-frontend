@@ -32,11 +32,7 @@ type PricingStepProps = {
  * figure, and the two drifted by five dollars a month before anyone compared
  * them. The billing screen reads the same rows.
  */
-export function PricingStep({
-  state,
-  onChangeTerm,
-  onNext,
-}: PricingStepProps) {
+export function PricingStep({ state, onChangeTerm, onNext }: PricingStepProps) {
   const [agreed, setAgreed] = useState(false);
   const { data: plans, isPending, error } = usePlans();
 
@@ -82,8 +78,12 @@ export function PricingStep({
                 ))}
               </div>
               <div className={styles["big-price"]}>
-                <span className={styles.cur}>{priceParts(selected).symbol}</span>
-                <span className={styles.amt}>{priceParts(selected).amount}</span>
+                <span className={styles.cur}>
+                  {priceParts(selected).symbol}
+                </span>
+                <span className={styles.amt}>
+                  {priceParts(selected).amount}
+                </span>
                 <span className={styles.per}>{priceParts(selected).per}</span>
               </div>
               <div className={styles["price-note"]}>

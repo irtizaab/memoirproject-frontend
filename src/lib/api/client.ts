@@ -33,6 +33,19 @@ export type ApiRequestOptions<TSchema extends ZodType> = ApiRequestCaching & {
   headers?: Record<string, string>;
   /** Caller's abort signal, combined with the timeout. */
   signal?: AbortSignal;
+  /**
+   * Override the default request timeout, in milliseconds.
+   *
+   * `NEXT_PUBLIC_API_TIMEOUT_MS` is set for ordinary requests — ten seconds,
+   * so a backend that has stopped answering fails fast instead of hanging a
+   * screen. A couple of endpoints legitimately take longer than that because
+   * a model is writing something, and they must not be held to a limit chosen
+   * for a database read.
+   *
+   * Raising the global default instead would be the wrong trade: every screen
+   * in the app would then wait a minute to discover the API is down.
+   */
+  timeoutMs?: number;
 };
 
 /**
@@ -47,15 +60,16 @@ export async function apiRequest<TSchema extends ZodType>({
   body,
   headers,
   signal,
+  timeoutMs,
   cache,
   next,
 }: ApiRequestOptions<TSchema>): Promise<z.infer<TSchema>> {
   const url = `${env.NEXT_PUBLIC_API_BASE_URL}${path}`;
 
-  const timeout = AbortSignal.timeout(env.NEXT_PUBLIC_API_TIMEOUT_MS);
-  const combinedSignal = signal
-    ? AbortSignal.any([timeout, signal])
-    : timeout;
+  const timeout = AbortSignal.timeout(
+    timeoutMs ?? env.NEXT_PUBLIC_API_TIMEOUT_MS,
+  );
+  const combinedSignal = signal ? AbortSignal.any([timeout, signal]) : timeout;
 
   let response: Response;
   try {

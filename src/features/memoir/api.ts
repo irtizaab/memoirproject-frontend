@@ -57,7 +57,10 @@ type RequestOptions = ApiRequestCaching & { signal?: AbortSignal };
  * calls take it as an argument rather than reading it from a cookie here,
  * because half of them run on the server, where there is no `document`.
  */
-function linkHeaders(token: string, reader?: string | null): Record<string, string> {
+function linkHeaders(
+  token: string,
+  reader?: string | null,
+): Record<string, string> {
   return reader
     ? { "X-Link-Token": token, "X-Reader-Token": reader }
     : { "X-Link-Token": token };

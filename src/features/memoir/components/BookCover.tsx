@@ -153,11 +153,11 @@ export function BookCover({
 
         <p className="mt-8 font-sans text-[12.5px] leading-loose text-muted-foreground">
           Assembled from voice notes, photographs and written recollections left
-          by {spell(totals.people)}{" "}
-          {totals.people === 1 ? "person" : "people"}, none of whom were asked
-          to make an account. Every paragraph carries the sources it was drawn
-          from. Where two people remembered the same afternoon differently, both
-          accounts were kept and neither was corrected.
+          by {spell(totals.people)} {totals.people === 1 ? "person" : "people"},
+          none of whom were asked to make an account. Every paragraph carries
+          the sources it was drawn from. Where two people remembered the same
+          afternoon differently, both accounts were kept and neither was
+          corrected.
         </p>
 
         <div className="mt-8 border border-seal p-6">

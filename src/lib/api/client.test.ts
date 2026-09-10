@@ -13,9 +13,11 @@ import { ApiError } from "@/lib/api/errors";
 const schema = z.object({ message: z.string() });
 
 function stubFetch(response: Response | Promise<never>) {
-  return vi.spyOn(globalThis, "fetch").mockReturnValue(
-    response instanceof Response ? Promise.resolve(response) : response,
-  );
+  return vi
+    .spyOn(globalThis, "fetch")
+    .mockReturnValue(
+      response instanceof Response ? Promise.resolve(response) : response,
+    );
 }
 
 function jsonResponse(body: unknown, status = 200) {

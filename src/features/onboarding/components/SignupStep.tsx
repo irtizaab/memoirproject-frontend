@@ -129,8 +129,7 @@ export function SignupStep({
     it existed, a second run silently replaced the visible memoir and every
     memory in the first became unreachable.
   */
-  const alreadyHasMemoir =
-    isApiError(claimError) && claimError.status === 409;
+  const alreadyHasMemoir = isApiError(claimError) && claimError.status === 409;
 
   const message = alreadyHasMemoir
     ? null
@@ -164,11 +163,15 @@ export function SignupStep({
         Keep this safe
       </h2>
       <p className={styles["ask-sub"]}>
-        Nothing is saved yet. Everyone you invite gets in by link —
-        you&apos;re the only one who ever needs an account.
+        Nothing is saved yet. Everyone you invite gets in by link — you&apos;re
+        the only one who ever needs an account.
       </p>
 
-      <form className={styles.stack} onSubmit={handleSubmit(onSubmit)} noValidate>
+      <form
+        className={styles.stack}
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+      >
         <button
           type="button"
           className={`${styles.btn} ${styles["btn-outline"]} ${styles["btn-block"]}`}

@@ -30,7 +30,6 @@ export function useBilling() {
   });
 }
 
-
 /**
  * The price list.
  *

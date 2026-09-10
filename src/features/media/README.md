@@ -91,10 +91,30 @@ the contributor's form. They ask a person for exactly the same things, and two
 near-identical copies of this state is how one of them quietly grows a bug the
 other does not have.
 
-The part worth reading is `toggle()`. Switching a section off **discards what
-was in it** and revokes the object URLs on the way out. Anything else leaves a
-recording the person believes they removed sitting in state, ready to be
-uploaded when they press Save — the worst possible surprise on this product.
+`Mode` has three values but only two of them are ever toggled. **Text is always
+on** in both callers: the sheet is the page, and a composer whose writing
+surface can be switched off is a blank screen. It stays a `Mode` because
+`initial` and `reset` are expressed in the same vocabulary, and because a memory
+still legitimately holds no text at all.
+
+The part worth reading is the split between `toggle()`, `holds()` and
+`discard()`. Putting a section out still **discards what was in it** and revokes
+the object URLs — anything else leaves a recording the person believes they
+removed sitting in state, ready to be uploaded when they press Save, which is
+the worst possible surprise on this product.
+
+But that used to happen on **one tap of the tile**, with no confirm and no undo,
+and the files exist nowhere else: `PhotoPicker` keeps only its downscaled blob,
+a recording's chunks only ever lived in that array, and nothing is uploaded
+until Save. A mis-tap next to a two-minute voice note destroyed it — while the
+*recoverable* case, deleting an already-saved asset in `MemoryEditor`, sat
+behind a two-tap confirm.
+
+So `toggle()` now does only the harmless half: lighting a section, and putting
+out one that holds nothing. `holds()` tells a caller whether a tap would destroy
+something, and `discard()` is the destructive path a caller reaches only once
+the person has said so. `DiscardPrompt` is the sentence they are asked, shared
+by both callers so the wording cannot drift.
 
 `uploadAll()` in `api.ts` sends every file in parallel and returns the asset
 ids. If one fails the whole call rejects; the successes are left as unattached

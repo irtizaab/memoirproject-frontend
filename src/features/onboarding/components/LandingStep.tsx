@@ -24,13 +24,13 @@ export function LandingStep({ onPledge }: { onPledge: () => void }) {
         one <em>promise</em>.
       </h1>
       <div className={styles["pledge-body"]}>
-        A memoir is only worth keeping if it&apos;s true. What goes in here
-        will outlast everyone who put it there.
+        A memoir is only worth keeping if it&apos;s true. What goes in here will
+        outlast everyone who put it there.
       </div>
       <div className={styles["pledge-rule"]} />
       <div className={styles.vow}>
-        &quot;I will be truthful about what I remember, and I will let others
-        be truthful about what they remember.&quot;
+        &quot;I will be truthful about what I remember, and I will let others be
+        truthful about what they remember.&quot;
       </div>
       <button
         type="button"

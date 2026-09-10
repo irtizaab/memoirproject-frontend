@@ -154,9 +154,7 @@ export function OnboardingFlow() {
             <NameStep
               name={state.name}
               onChange={(name) => update({ name })}
-              onNext={() =>
-                advance("rel", { subject_name: state.name.trim() })
-              }
+              onNext={() => advance("rel", { subject_name: state.name.trim() })}
             />
           )}
           {step === "rel" && (
@@ -165,9 +163,7 @@ export function OnboardingFlow() {
               rel={state.rel}
               relLabel={state.relLabel}
               onChange={update}
-              onNext={() =>
-                advance("years", toDraftUpdate(state))
-              }
+              onNext={() => advance("years", toDraftUpdate(state))}
             />
           )}
           {step === "years" && (

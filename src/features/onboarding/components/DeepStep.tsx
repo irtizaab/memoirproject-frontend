@@ -18,8 +18,8 @@ export function DeepStep({ name, deep, onChange, onNext }: DeepStepProps) {
         What should never be forgotten about {firstName(name)}?
       </h2>
       <p className={styles["ask-sub"]}>
-        One thing. It becomes the first question your family is asked, so
-        start them where you&apos;d start.
+        One thing. It becomes the first question your family is asked, so start
+        them where you&apos;d start.
       </p>
       <div className={styles.field}>
         <label htmlFor="f-deep">In a line</label>

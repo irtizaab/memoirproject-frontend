@@ -58,12 +58,16 @@ describe("AppHeader account menu", () => {
 
     await userEvent.click(trigger);
 
-    expect(await screen.findByText("irtiza.abbas@example.com")).toBeInTheDocument();
+    expect(
+      await screen.findByText("irtiza.abbas@example.com"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
     expect(
       screen.getByRole("menuitemradio", { name: /system/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: /sign out/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /sign out/i }),
+    ).toBeInTheDocument();
   });
 
   it("labels the theme radio group with the Appearance heading", async () => {
@@ -76,6 +80,8 @@ describe("AppHeader account menu", () => {
     // aria-labelledby is the whole reason GroupLabel needs a group above it.
     // If the label is ever moved back outside the radio group this fails
     // before the render does.
-    expect(await screen.findByRole("group", { name: "Appearance" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("group", { name: "Appearance" }),
+    ).toBeInTheDocument();
   });
 });

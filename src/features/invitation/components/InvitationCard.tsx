@@ -43,16 +43,14 @@ export function InvitationCard({ invitation }: { invitation: Invitation }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">
-          {invitation.subject_name}
-        </CardTitle>
+        <CardTitle className="text-2xl">{invitation.subject_name}</CardTitle>
         {years && <CardDescription>{years}</CardDescription>}
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-lg">
           <span className="font-medium">{invitation.invited_by}</span> is
-          collecting memories of {invitation.subject_name} and would like you
-          to add yours.
+          collecting memories of {invitation.subject_name} and would like you to
+          add yours.
         </p>
         <p className="text-sm text-muted-foreground">
           You don&apos;t need an account. Nothing you write is public — it goes

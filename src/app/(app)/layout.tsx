@@ -3,7 +3,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { RequireSession } from "@/components/layout/RequireSession";
 
 /**
- * The chrome around every signed-in screen: header, centred column, footer.
+ * The chrome around every signed-in screen: header, page, footer.
  *
  * A route **group** — the `(app)` folder name is parentheses-wrapped, so it
  * adds a layout without adding a URL segment. `/archive` is still `/archive`.
@@ -12,6 +12,13 @@ import { RequireSession } from "@/components/layout/RequireSession";
  * no navigation because there is nowhere to navigate to yet, and the
  * contributor page has none because a contributor has no account and never
  * will.
+ *
+ * `main` is deliberately **full-bleed**. It used to be a centred `max-w-5xl`
+ * column, which meant no screen could draw a band that runs edge to edge — and
+ * a band is the whole structure of the redesign: a `--paper-deep` title band
+ * with a rule under it, then the ordinary page. Width is now the screen's own
+ * business, and `PageHeader`/`PageBody` are what centre it, so the 1024px
+ * measure is still declared in exactly one pair of places.
  */
 export default function AppLayout({
   children,
@@ -20,9 +27,7 @@ export default function AppLayout({
     <RequireSession>
       <div className="flex min-h-svh flex-col">
         <AppHeader />
-        <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12 md:py-16">
-          {children}
-        </main>
+        <main className="flex-1">{children}</main>
         <AppFooter />
       </div>
     </RequireSession>

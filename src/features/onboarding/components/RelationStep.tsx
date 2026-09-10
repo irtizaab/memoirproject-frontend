@@ -27,8 +27,8 @@ export function RelationStep({
     <div className={styles.step}>
       <h2 className={styles.ask}>{firstName(name)} is your…</h2>
       <p className={styles["ask-sub"]}>
-        This decides which questions your family is asked. A grandchild is
-        asked different things than an old colleague.
+        This decides which questions your family is asked. A grandchild is asked
+        different things than an old colleague.
       </p>
       <div className={styles.chips}>
         {RELATIONS.map(([label, value]) => (

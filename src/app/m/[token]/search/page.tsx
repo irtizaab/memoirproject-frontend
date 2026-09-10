@@ -26,8 +26,13 @@ export default async function ReaderSearchPage({
 
   if (!reader) return <MemoirGate token={token} subjectName={null} />;
 
+  /*
+    No column of its own: `SearchScreen` draws a full-bleed band and centres
+    its own results, because it renders on both sides of the `(app)` boundary
+    and only one of those has a layout to inherit.
+  */
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-12 md:py-16">
+    <main>
       <SearchScreen
         source={{ kind: "reader", token, reader }}
         backHref={`/m/${token}`}

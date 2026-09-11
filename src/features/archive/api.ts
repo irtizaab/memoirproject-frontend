@@ -16,10 +16,12 @@ import {
 import { authHeaders } from "@/lib/supabase/client";
 import {
   assemblyResultSchema,
+  memoirPlanSchema,
   memoirPublicationSchema,
   memoryCreateSchema,
   memorySchema,
   type AssemblyResult,
+  type MemoirPlan,
   type MemoirPublication,
   type Memory,
   type MemoryCreate,
@@ -40,6 +42,7 @@ const ENDPOINTS = {
  * one is "what has been collected", the other is "what becomes of it".
  */
 const BOOK = {
+  plan: (memoirId: string) => `/memoirs/${memoirId}/plan`,
   assemble: (memoirId: string) => `/memoirs/${memoirId}/assemble`,
   publish: (memoirId: string) => `/memoirs/${memoirId}/publish`,
   passphrase: (memoirId: string) => `/memoirs/${memoirId}/passphrase`,
@@ -210,28 +213,105 @@ export async function getMemory(
  * ------------------------------------------------------------------------- */
 
 /**
- * How long to let assembly run, in milliseconds.
+ * How long to let planning run, in milliseconds.
  *
  * The longest request in the product by a wide margin: a model reads the whole
- * archive and writes a book out of it, on the slower tier, and the backend
- * allows it five minutes. The app's default timeout is ten seconds, chosen so
- * a backend that has stopped answering fails a screen fast — which is right
- * for a database read and wrong for this.
+ * archive — every memory, every transcript, and every photograph as an image —
+ * and decides what the book is, on the slower tier, and the backend allows it
+ * five minutes. The app's default timeout is ten seconds, chosen so a backend
+ * that has stopped answering fails a screen fast, which is right for a
+ * database read and wrong for this.
  *
  * Left at the default, the browser gives up while the backend is still
- * working, and it *keeps* working: the chapters get written and the owner is
- * told it failed. Six minutes, so this outlasts the backend's own limit and
+ * working, and it *keeps* working: the plan gets stored and the owner is told
+ * it failed. Six minutes, so this outlasts the backend's own limit and
  * whatever the answer is, it is the real one.
+ *
+ * Assembly keeps it too, at a fraction of the need — it is now a read of one
+ * row and a batch of inserts, no model call at all — because a large archive
+ * is still a few thousand rows and there is nothing to gain from having it
+ * fail sooner.
  */
-const ASSEMBLE_TIMEOUT_MS = 360_000;
+const PLAN_TIMEOUT_MS = 360_000;
 
 /**
- * Turn everything in the archive into chapters.
+ * Read the whole archive and decide what the book is.
  *
- * Owner only, and re-runnable while the memoir is a draft: the owner adds
- * memories and runs it again, and the whole book is rebuilt from what is there
- * now. Once published it is refused — every reflection in a sealed memoir is
- * anchored to characters in text that can never move.
+ * The expensive step, and the only one that spends a model call. Owner only.
+ * Running it again replaces the plan — there is one per memoir — which is how
+ * the owner asks for a different book, and which discards any corrections they
+ * made to the last one.
+ *
+ * Nothing is written to the book here. The plan is a draft to be read.
+ */
+export async function generatePlan(
+  memoirId: string,
+  options: RequestOptions = {},
+): Promise<MemoirPlan> {
+  return apiRequest({
+    path: BOOK.plan(memoirId),
+    method: "POST",
+    headers: await authHeaders(),
+    schema: memoirPlanSchema,
+    timeoutMs: PLAN_TIMEOUT_MS,
+    ...options,
+  });
+}
+
+/**
+ * The plan as it stands. Cheap — it is one row.
+ *
+ * 404 with "not been planned" in the detail is a real state and not an error:
+ * the memoir exists and nobody has planned it yet. The hook that calls this
+ * treats it as "no plan" rather than as a failure.
+ */
+export async function getPlan(
+  memoirId: string,
+  options: RequestOptions = {},
+): Promise<MemoirPlan> {
+  return apiRequest({
+    path: BOOK.plan(memoirId),
+    method: "GET",
+    headers: await authHeaders(),
+    schema: memoirPlanSchema,
+    cache: "no-store",
+    ...options,
+  });
+}
+
+/**
+ * Correct the plan: rename a chapter, move one, drop one.
+ *
+ * The whole document goes back, not a patch of it — the server renumbers
+ * everything from array position and refuses a chapter set that does not match
+ * what it holds, so a half-stale client cannot silently lose a chapter.
+ *
+ * Refused once the plan has been assembled or the memoir sealed. Regenerating
+ * is how you start again from there.
+ */
+export async function updatePlan(
+  memoirId: string,
+  chapters: MemoirPlan["chapters"],
+  options: RequestOptions = {},
+): Promise<MemoirPlan> {
+  return apiRequest({
+    path: BOOK.plan(memoirId),
+    method: "PATCH",
+    headers: await authHeaders(),
+    body: { chapters },
+    schema: memoirPlanSchema,
+    ...options,
+  });
+}
+
+/**
+ * Write the stored plan into the memoir's chapters.
+ *
+ * Owner only, and re-runnable while the memoir is a draft: the owner corrects
+ * the plan or adds memories and runs it again, and the whole book is rebuilt.
+ * Refused with a 409 when there is no plan yet — plan first — and once
+ * published, because every reflection in a sealed memoir is anchored to
+ * characters in text that can never move.
  */
 export async function assembleMemoir(
   memoirId: string,
@@ -242,7 +322,7 @@ export async function assembleMemoir(
     method: "POST",
     headers: await authHeaders(),
     schema: assemblyResultSchema,
-    timeoutMs: ASSEMBLE_TIMEOUT_MS,
+    timeoutMs: PLAN_TIMEOUT_MS,
     ...options,
   });
 }

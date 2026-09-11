@@ -13,10 +13,23 @@
  * in `features/README.md` is exactly this line.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { listThreads, postComment } from "@/features/memoir/api";
+import {
+  editChapter,
+  getOwnerChapter,
+  getOwnerReading,
+  listThreads,
+  postComment,
+} from "@/features/memoir/api";
 import type {
+  Chapter,
+  ChapterEdit,
   CommentCreate,
   CommentReceipt,
   CommentThread,
@@ -26,6 +39,10 @@ export const memoirKeys = {
   all: ["memoir"] as const,
   threads: (chapterId: string) =>
     [...memoirKeys.all, "threads", chapterId] as const,
+  preview: (memoirId: string) =>
+    [...memoirKeys.all, "preview", memoirId] as const,
+  previewChapter: (chapterId: string) =>
+    [...memoirKeys.all, "preview", "chapter", chapterId] as const,
 };
 
 /**
@@ -38,14 +55,18 @@ export const memoirKeys = {
  * they put down.
  */
 export function useThreads(
-  token: string,
+  token: string | null,
   chapterId: string,
   reader: string | null,
   initial: CommentThread[],
 ) {
   return useQuery({
     queryKey: memoirKeys.threads(chapterId),
-    queryFn: () => listThreads(token, chapterId, reader),
+    // `skipToken` rather than `enabled`, because it also narrows the token:
+    // with no view link there is nothing to ask through — the owner previewing
+    // their own unsealed memoir — and `listThreads` without one is a 404,
+    // which is a lie in the console on a page that is working correctly.
+    queryFn: token ? () => listThreads(token, chapterId, reader) : skipToken,
     initialData: initial,
   });
 }
@@ -64,17 +85,79 @@ export function useThreads(
  * comment ever needed to be.
  */
 export function useLeaveComment(
-  token: string,
+  token: string | null,
   chapterId: string,
   reader: string | null,
 ) {
   const queryClient = useQueryClient();
 
   return useMutation<CommentReceipt, Error, CommentCreate>({
-    mutationFn: (comment) => postComment(token, chapterId, reader, comment),
+    // Null only where the composer is never rendered — see `useThreads`. A
+    // mutation cannot be skipped the way a query can, so it refuses instead of
+    // sending a comment nobody could have written.
+    mutationFn: (comment) =>
+      token
+        ? postComment(token, chapterId, reader, comment)
+        : Promise.reject(new Error("This memoir has not been sealed yet.")),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: memoirKeys.threads(chapterId),
+      });
+    },
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/*  The owner's preview                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The book, read by its keeper before it is sealed.
+ *
+ * The one part of this feature that is fetched in the browser rather than on
+ * the server, and for a reason that is not a preference: the owner's
+ * credential is a Supabase session held in `localStorage`, which a server
+ * render cannot see. The family's copy stays server-rendered — they arrive
+ * with a cookie, which does reach the server.
+ *
+ * `staleTime: 0` and no polling. A preview is read once, deliberately, by
+ * somebody about to make an irreversible decision.
+ */
+export function useOwnerReading(memoirId: string) {
+  return useQuery({
+    queryKey: memoirKeys.preview(memoirId),
+    queryFn: () => getOwnerReading(memoirId),
+  });
+}
+
+/** One chapter of it. Null id on the matter pages, which need no chapter. */
+export function useOwnerChapter(chapterId: string | null) {
+  return useQuery({
+    queryKey: memoirKeys.previewChapter(chapterId ?? "none"),
+    queryFn: chapterId ? () => getOwnerChapter(chapterId) : skipToken,
+  });
+}
+
+/**
+ * The owner's corrections to one page.
+ *
+ * The response is written straight into the cache rather than invalidated: it
+ * *is* the chapter as stored, so a refetch would ask for what is already in
+ * hand — and the credits in it have just been re-surveyed, which is the part
+ * the owner needs to see immediately rather than one round trip later.
+ *
+ * The covers are invalidated, because a renamed chapter changes the contents
+ * rail and the title page.
+ */
+export function useEditChapter(chapterId: string, memoirId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<Chapter, Error, ChapterEdit>({
+    mutationFn: (edit) => editChapter(chapterId, edit),
+    onSuccess: (chapter) => {
+      queryClient.setQueryData(memoirKeys.previewChapter(chapterId), chapter);
+      void queryClient.invalidateQueries({
+        queryKey: memoirKeys.preview(memoirId),
       });
     },
   });

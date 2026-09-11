@@ -25,19 +25,24 @@ import {
   createMemory,
   deleteMemory,
   exportMemoirPdf,
+  generatePlan,
   getMemory,
+  getPlan,
   listMemories,
   publishMemoir,
   removeAsset,
   replacePassphrase,
   updateMemory,
+  updatePlan,
 } from "@/features/archive/api";
 import type {
   AssemblyResult,
+  MemoirPlan,
   MemoirPublication,
   Memory,
   MemoryCreate,
 } from "@/features/archive/schemas";
+import { isApiError } from "@/lib/api/errors";
 import { hasPendingTranscript } from "@/features/media";
 
 /**
@@ -50,6 +55,7 @@ export const archiveKeys = {
     [...archiveKeys.all, "memories", memoirId] as const,
   memory: (memoryId: string) =>
     [...archiveKeys.all, "memory", memoryId] as const,
+  plan: (memoirId: string) => [...archiveKeys.all, "plan", memoirId] as const,
 };
 
 /**
@@ -235,6 +241,80 @@ export function useMemory(memoirId: string | null, memoryId: string) {
  * changed, and what the dashboard needs to hear is that `chapter_count` moved
  * off zero — which is what unlocks reading the book and exporting it.
  */
+/**
+ * The stored plan, or `null` when nobody has planned this memoir yet.
+ *
+ * "Not planned" arrives as a 404, which is the honest status — there is no
+ * such resource — but it is a normal state and not a failure, so it is mapped
+ * to `null` here rather than left to every component to recognise. A real 404
+ * (somebody else's memoir) is indistinguishable by design and lands in the
+ * same place, which is correct: either way there is no plan to show.
+ *
+ * No retry, for the same reason. Retrying a 404 three times to be told the
+ * same thing costs a second of the owner looking at a spinner.
+ */
+export function usePlan(memoirId: string | null) {
+  return useQuery<MemoirPlan | null>({
+    queryKey: archiveKeys.plan(memoirId ?? "none"),
+    queryFn: async () => {
+      if (!memoirId) return null;
+      try {
+        return await getPlan(memoirId);
+      } catch (error) {
+        if (isApiError(error) && error.status === 404) return null;
+        throw error;
+      }
+    },
+    enabled: Boolean(memoirId),
+    retry: false,
+  });
+}
+
+/**
+ * Reads the archive and decides what the book is. The slow one.
+ *
+ * Only the plan is invalidated: nothing about the book itself changed, so
+ * `GET /me` — whose `chapter_count` gates the reader and the export button —
+ * is deliberately left alone. Planning again does not un-assemble a memoir.
+ */
+export function useGeneratePlan(memoirId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<MemoirPlan, Error, void>({
+    mutationFn: () => {
+      if (!memoirId) throw new Error("No memoir is loaded yet.");
+      return generatePlan(memoirId);
+    },
+    onSuccess: (plan) => {
+      // Written straight into the cache as well as invalidated: the response
+      // *is* the new plan, and a five-minute wait should not be followed by a
+      // second request to be told what we were just handed.
+      queryClient.setQueryData(archiveKeys.plan(memoirId ?? "none"), plan);
+    },
+  });
+}
+
+/**
+ * Corrects the plan — a renamed chapter, a moved one, a dropped one.
+ *
+ * Sends the whole chapter list, because the server renumbers from array
+ * position rather than trusting an ordinal, and refuses a set that does not
+ * match what it holds.
+ */
+export function useUpdatePlan(memoirId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<MemoirPlan, Error, MemoirPlan["chapters"]>({
+    mutationFn: (chapters) => {
+      if (!memoirId) throw new Error("No memoir is loaded yet.");
+      return updatePlan(memoirId, chapters);
+    },
+    onSuccess: (plan) => {
+      queryClient.setQueryData(archiveKeys.plan(memoirId ?? "none"), plan);
+    },
+  });
+}
+
 export function useAssembleMemoir(memoirId: string | null) {
   const queryClient = useQueryClient();
 
@@ -245,6 +325,12 @@ export function useAssembleMemoir(memoirId: string | null) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: accountKeys.me() });
+      // The plan too: `assembled_at` has just been stamped on it, and that is
+      // what stops the editing controls offering to change a plan the book has
+      // already been built from.
+      void queryClient.invalidateQueries({
+        queryKey: archiveKeys.plan(memoirId ?? "none"),
+      });
     },
   });
 }

@@ -1,4 +1,5 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
@@ -35,6 +36,7 @@ update it when you change what that directory holds. The short version:
   `--seal` lifts to `#cf6a60` in dark because `#7c1015` on a near-black ground measures 1.71:1 and
   is unreadable as text. `--lift` is the one shadow; a card invented with its own elevation is how
   eight cards end up with six.
+
 - Buttons and labels are **sentence case**. The tracked-out uppercase is reserved for the eyebrow
   above a page title (`.eyebrow`) and for quiet metadata (`.eyebrow-muted`), both defined in
   `globals.css`.
@@ -62,6 +64,8 @@ Run `npm run verify` (typecheck + lint + test) before considering work complete.
 ## The shape of the app
 
 ```
+/                the landing page — what this is, and the way in
+/signin          the way back in, for an account that already exists
 /onboarding      no account yet — its own chrome, no nav
                  ends by pushing to /archive; nothing else follows it
 /archive         the owner's memories, as summaries    ┐
@@ -74,17 +78,48 @@ Run `npm run verify` (typecheck + lint + test) before considering work complete.
 /search          the whole memoir, searched            ┘
 /j/[token]       a contributor — its own chrome, server-rendered
 /m/[token]       the finished memoir, opened by a view link AND a passphrase —
-/m/[token]/[id]  its own chrome, server-rendered, four columns wide
+/m/[token]/[page]  its own chrome, server-rendered, four columns wide.
+                 A page is a chapter id, `people`, or `colophon`
 /m/[token]/search  the same search, from inside the book
+/preview/[id]/…  the same book, read by its owner before sealing it —
+                 signed-in, client-fetched, no comment layer, and the one
+                 place the finished page is corrected by hand
 ```
+
+**The owner can read the book before sealing it, and could not before.**
+Sealing is irreversible and a **view** link is what publication creates, so the
+only way to see what a family would read was to publish it to them first —
+while `BookPanel` said "read it through before sealing it". `/preview/[memoirId]`
+is that reading: the same `ReaderFrame`, the same pages, addressed by memoir id
+and the owner's bearer token. The backend needed nothing —
+`GET /memoirs/{id}/chapters` exists for this and `_reachable_chapter` tries the
+owner's credential before any link. It is the one reader screen fetched in the
+browser, because a Supabase session lives in `localStorage` where a server
+render cannot see it. It carries **no comment layer**: a comment is left by
+somebody holding a link, against text that can never move, and before sealing
+neither exists.
 
 `src/app/(app)/` is a route group: parenthesised, so it adds a layout without adding a URL
 segment. **Its `main` is full-bleed and centres nothing** — a page is bands at different weights
 (a `--paper-deep` title band with a rule under it, then the ordinary page), and a band cannot run
 edge to edge inside a centred column. Width belongs to `PageHeader` and `PageBody` in
 `components/layout/`, which is where the 1024px measure is declared. Do not put a `max-w-*` back
-into the layout. `/onboarding`, `/j/[token]` and `/m/[token]` sit outside it on purpose — the first is
+into the layout. `/onboarding`, `/j/[token]`, `/m/[token]` and `/preview/[id]` sit outside it on purpose — the first is
 reached before an account exists, the other two by people who will never have one.
+
+**There are two doors, and onboarding is only one of them.** `/` is a real
+landing page and `/signin` signs an existing account back in — both outside the
+`(app)` group, both with their own chrome. Before they existed, `/` redirected
+to `/archive`, which bounced a signed-out visitor into `/onboarding`, so the
+only way back into an account was to run the whole flow again and be told at
+the end by `memoir_one_per_account`'s 409 that you already had a memoir.
+
+`RequireSession` now sends a signed-out visitor to `/signin` rather than
+`/onboarding` — somebody who bookmarked `/archive` has an account, and "before
+we begin, one promise" is the wrong answer to an expired session; `/signin`
+links onward for the genuinely new. Signing out lands on `/` for the same
+reason. The sign-in form calls **Supabase only** — no `apiRequest` anywhere in
+it, because a token is all this product's API ever wants.
 
 **Onboarding ends at `/archive`.** It used to end at five mock screens — a fake dashboard, a fake
 AI-drafting spinner, hardcoded chapters, a fake publish — while the real app was reachable by
@@ -116,11 +151,11 @@ it, `GET /me` stays cached with a memoir in it, onboarding's landing guard sees 
 the app hanging. The guard now also requires a live session, as a second wall.
 
 **A memory is not one thing.** Writing, photographs and recordings go in together — the two
-attachment rows in the composer are *toggles*, not a choice, and both can be lit alongside the
+attachment rows in the composer are _toggles_, not a choice, and both can be lit alongside the
 writing. **Writing itself is not a toggle: it is always on.** The sheet is the page, and a composer
 whose writing surface can be switched off is a blank screen with a date picker on it. A memory can
 still be photographs or a recording with nothing typed — an empty box saves as no text at all, and
-the one rule that matters (a memory needs *something* in it) is enforced before the round trip and
+the one rule that matters (a memory needs _something_ in it) is enforced before the round trip and
 again by the backend's `EmptyMemory`. Both the owner's
 `MemoryComposer` and the contributor's `ContributeForm` share `useAttachments()` from
 `features/media`, because they ask a person for the same things and two copies of that state is how
@@ -159,7 +194,7 @@ A question the owner rewrites becomes `source: "owner"` and survives every
 later rewrite. That is the whole mechanism, and it is why the row says so.
 
 The contributor half lives in `features/invitation`: the questions appear above
-the composer as things to write *about*, not as a field each. There is still one
+the composer as things to write _about_, not as a field each. There is still one
 box. No numbering, no "answered" state, no count — `AGENTS.md` on the backend
 forbids gamification, and a ticked-off list of questions is a progress bar.
 
@@ -188,10 +223,53 @@ Every way of failing to open one answers 404 and the gate says one sentence for
 all of them — "that link is real but your passphrase is wrong" is what turns a
 forwarded link into something worth guessing at.
 
-**The archive is where the book is made.** `BookPanel` on `/archive` assembles
-the memoir into chapters, seals it, links to it, and exports the PDF. Nothing
-that opens the reader appears until `chapter_count` is above zero — absent, not
-disabled, because a disabled button is a promise with a reason to guess at.
+**The archive is where the book is made, in three steps.** `BookPanel` on
+`/archive` plans the memoir, then assembles it, then seals it, links to it, and
+exports the PDF. **"View the memoir" is always there** — it is how the owner
+sees the real page, and gating it on `chapter_count` hid it at exactly the
+moment somebody went looking. The PDF still waits for a chapter, because a PDF
+of nothing is a broken file where a page of nothing is a title page that says
+so. Nothing anywhere is disabled rather than absent: a disabled button is a
+promise with a reason to guess at.
+
+**Planning is the step that used to be invisible.** A model reads the whole
+archive — every memory, every transcript, every photograph as an image — and
+decides where the chapters divide, what each is called, and which photograph
+belongs beside which paragraph. That decision is now a stored draft the owner
+reads before anything is written: `PlanOutline` renders it, and lets them
+rename a chapter, move one, or leave one out. `PATCH` takes the whole chapter
+list because order is array position, renumbered server-side, so nothing here
+invents an ordinal.
+
+It is up-and-down buttons, not drag-and-drop: a memoir has a handful of
+chapters, the app carries no drag dependency, and arrows are keyboard-reachable
+for free. The outline is keyed on the plan's timestamps so regenerating hands
+it a fresh draft rather than leaving it holding chapter ids the server no longer
+has.
+
+**`organised_by` is shown, not hidden.** `planner` means the model read the
+archive; `by_date` means it could not and the decade fallback ran. The two are
+indistinguishable once the book is written, and a backend with no model key
+produces `by_date` for every memoir — so the outline says which one this was.
+
+**The outline stays editable until the memoir is sealed.** It used to freeze
+the moment the book was assembled, which was wrong about which fact protects
+the character offsets underneath: publication is, not assembly, and an unsealed
+book is rewritten wholesale by the next assemble. So `PlanOutline` goes
+read-only on `published_at` alone, and **"Assemble again"** is how a corrected
+outline reaches the page.
+
+**And the page itself is corrected by hand, at `/preview/[memoirId]`.**
+`PageEditor` swaps the finished page for the same page with controls on it:
+reword a passage, reorder, remove, rename the chapter, move a photograph to
+another paragraph or another placement. `PATCH /chapters/{id}` — owner only,
+409 once sealed.
+
+The two edits meet in one place and the panel says so before either button is
+pressed: **planning again replaces a corrected outline, and assembling again
+replaces a corrected page.** Nothing rewrites itself on the owner's behalf, and
+there is no "add a passage" anywhere — prose with no `block_source` behind it
+is exactly what the never-fabricate rule forbids.
 
 **The reader is a book, and it is addressed by a link.** `/m/[token]` resolves a **view**-scoped
 `memoir_link` — a different scope from the contribute link behind `/j/[token]`, so a link posted in
@@ -199,7 +277,7 @@ a family group chat cannot be used to write into the archive, and a link that le
 memories does not also hand out the finished book. Both pages are server-rendered because a link
 token needs no browser-held credential.
 
-Three things about `features/memoir` that are load-bearing rather than stylistic, and are explained
+Four things about `features/memoir` that are load-bearing rather than stylistic, and are explained
 at length in its README:
 
 - **A chapter is assembled from many people, so every clause is traceable.** `block_source` carries
@@ -207,9 +285,23 @@ at length in its README:
   gutter is both the citation key and the durable deep link, and hovering a credit underlines the
   exact words it fathered. This is what makes the "never fabricate" rule checkable by a reader
   rather than merely asserted.
+- **The front and back matter are pages, not sections.** Title page, the
+  chapters in order, the people, the colophon — each with its own address, its
+  own entry in the contents rail, and its own place in the turn buttons, so the
+  last chapter turns into the people rather than into a dead end. They used to
+  be one screen with the rail's "Back matter" pointing at an anchor halfway
+  down the front matter. Every link in the feature is built from a `base` prop
+  (`/m/{token}` or `/preview/{id}`); hard-coding `/m/` anywhere sends the
+  owner's preview into the family's copy, which their session cannot open.
 - **Two right-hand lanes, not one.** The margin (photographs and sources) is sealed with the
   memoir; the comment lane grows forever. Sharing a lane would let ten years of comments push a
   photograph away from the paragraph that earned it.
+- **Three placements, and the third is in the flow.** `margin` draws in the lane, `inset` runs full
+  measure, and `carousel` is several photographs of one moment shown in turn between the paragraphs
+  — the group is the shared `anchor_block_id`, so there is no carousel row to store. It advances on
+  its own and therefore stops on hover and focus, carries a visible pause control (WCAG 2.2.2), and
+  does not move at all under `prefers-reduced-motion`, where it is a row of photographs the reader
+  steps through. One photograph is not a carousel and renders as a plate.
 - **The frame is a fixed width and the prose column is offset by a constant**, so collapsing the
   contents rail cannot reflow a single line. Making the column a fraction of the frame breaks this
   and will not show up in a screenshot.
@@ -217,6 +309,11 @@ at length in its README:
 Anchoring by character offset is only safe because **publication is immutable** — the text can
 never move out from under an offset. If a published chapter ever becomes editable, every anchor in
 that feature needs rebasing.
+
+The one place text legitimately moves is _before_ assembly, when the owner rewords a passage in the
+plan. The backend's `plan_service.resurvey` handles it by re-finding each span rather than adjusting
+it, and dropping to whole-block attribution when the words are gone or now ambiguous. Nothing in
+this feature has to know — by the time a chapter exists, its offsets are true again.
 
 **A comment is left by a `memoir_participant`, never a user.** `features/memoir` borrows
 `useRememberContributor` from `features/invitation` so the token is stored under the same

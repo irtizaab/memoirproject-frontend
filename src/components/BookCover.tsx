@@ -8,10 +8,11 @@ import { cn } from "@/lib/utils";
  * landed on a screen with no book on it. It is here so the archive and the
  * contributor page can both open with it.
  *
- * There are two other BookCovers in the tree and neither could be reused: the
- * onboarding one is welded to `onboarding.module.css`, and the reader's is a
- * whole title page with contents and a colophon attached. This one is the card
- * alone, and it knows nothing — three strings and a width.
+ * There is one other cover in the tree and it could not be reused: onboarding's
+ * is welded to `onboarding.module.css`. The reader's used to be a third, and is
+ * now `features/memoir/components/BookMatter.tsx` — a set of real pages rather
+ * than a card. This one is the card alone, and it knows nothing: three strings
+ * and a width.
  *
  * It sits in `src/components/` rather than `ui/` (it is not a shadcn primitive)
  * or `layout/` (it is not `(app)` chrome, and `/j/[token]` renders it).

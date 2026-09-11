@@ -14,6 +14,7 @@ export { MemoryCard } from "@/features/archive/components/MemoryCard";
 export { MemoryComposer } from "@/features/archive/components/MemoryComposer";
 export { MemoryDetail } from "@/features/archive/components/MemoryDetail";
 export { MemoryEditor } from "@/features/archive/components/MemoryEditor";
+export { PlanOutline } from "@/features/archive/components/PlanOutline";
 export {
   archiveKeys,
   useAssembleMemoir,
@@ -21,18 +22,24 @@ export {
   useCreateMemory,
   useDeleteMemory,
   useExportMemoir,
+  useGeneratePlan,
   useMemories,
   useMemory,
+  usePlan,
   usePublishMemoir,
   useRemoveAsset,
   useReplacePassphrase,
   useUpdateMemory,
+  useUpdatePlan,
 } from "@/features/archive/hooks";
 export type {
   AssemblyResult,
+  MemoirPlan,
   MemoirPublication,
   Memory,
   MemoryKind,
+  PlanOrigin,
+  PlannedChapter,
 } from "@/features/archive/schemas";
 export {
   archiveEyebrow,

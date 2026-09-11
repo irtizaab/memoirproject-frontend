@@ -3,20 +3,94 @@
 The finished book, as the family reads it. The twin of the backend's
 `src/domain/chapters/`.
 
-| File | What it holds |
-| --- | --- |
-| `schemas.ts` | `chapterSchema`, `memoirReadingSchema`, `readerSessionSchema` |
-| `api.ts` | `openMemoir`, `getReading`, `getChapter`, `listThreads`, `postComment` |
-| `readerSession.ts` | The session cookie, and which memoir a link opened |
-| `components/MemoirGate.tsx` | The door: passphrase, name, relation |
-| `queries.ts` | **Server** data path — the prose, fetched before the page is sent |
-| `hooks.ts` | **Client** data path — the comment layer, and only that |
-| `utils.ts` | Roman numerals, credit lines, and `segment()` |
-| `useLanes.ts` | Positions the two right-hand lanes against their paragraphs |
-| `reader.module.css` | The four-column geometry. Lengths only — no colour |
-| `components/ReaderFrame.tsx` | Masthead, contents rail, the frame |
-| `components/ChapterReader.tsx` | One chapter: prose, margin, comments |
-| `components/BookCover.tsx` | Front and back matter (server component) |
+| File                           | What it holds                                                          |
+| ------------------------------ | ---------------------------------------------------------------------- |
+| `schemas.ts`                   | `chapterSchema`, `memoirReadingSchema`, `readerSessionSchema`          |
+| `api.ts`                       | `openMemoir`, `getReading`, `getChapter`, `listThreads`, `postComment` |
+| `readerSession.ts`             | The session cookie, and which memoir a link opened                     |
+| `components/MemoirGate.tsx`    | The door: passphrase, name, relation                                   |
+| `queries.ts`                   | **Server** data path — the prose, fetched before the page is sent      |
+| `hooks.ts`                     | **Client** data path — the comment layer, and the owner's preview      |
+| `utils.ts`                     | Roman numerals, credit lines, and `segment()`                          |
+| `useLanes.ts`                  | Positions the two right-hand lanes against their paragraphs            |
+| `reader.module.css`            | The four-column geometry. Lengths only — no colour                     |
+| `components/ReaderFrame.tsx`   | Masthead, contents rail, the frame                                     |
+| `components/ChapterReader.tsx` | One chapter: prose, margin, comments                                   |
+| `components/BookMatter.tsx`    | `TitlePage`, `PeoplePage`, `ColophonPage` (server components)          |
+| `components/PageEditor.tsx`    | The same page, editable — the owner's own corrections                  |
+
+## A book has pages, and the matter is three of them
+
+The reader walks in one direction: title page, the chapters in order, the
+people, the colophon. Each is a page with its own address, its own entry in the
+contents rail, and its own place in what the turn buttons do — so the last
+chapter turns into the people rather than into a dead end.
+
+It was one page until it wasn't. The title page carried the contents, the index
+of people and the colophon stacked down it, and the rail's "Back matter"
+pointed at `/m/{token}#people` — an anchor halfway down the _front_ matter. A
+book whose every chapter is a page had a first page four pages long, and the
+colophon appeared in no contents at all.
+
+The chapters and the two matter pages share one route, `/m/[token]/[page]`,
+because they need the same session, the same covers and the same frame and
+differ only in what fills the column. `people` and `colophon` cannot collide
+with a chapter: a chapter id is a UUID.
+
+## Two credentials, one book
+
+`base` is the book's address without a page, and every link in the feature is
+built from it — `/m/{token}` for the family, `/preview/{memoirId}` for the owner
+reading before they seal it.
+
+The preview exists because **sealing cannot be taken back** and a view link is
+what publication creates. `BookPanel` said "read it through before sealing it"
+while offering no way to: the only way to see the book was to publish it to the
+family first. The backend had been ready all along —
+`GET /memoirs/{id}/chapters` exists for exactly this, and the chapter route
+tries the owner's credential before any link so an unpublished chapter is
+readable by the person whose it is.
+
+It is the one screen here fetched in the **browser**, and not by preference:
+the owner's credential is a Supabase session in `localStorage`, which a server
+render cannot see. The family's copy stays server-rendered, because a cookie
+does reach the server.
+
+**The preview has no comment layer.** Not a simplification — a comment is left
+by somebody holding the link, against a passage that can never move afterwards,
+and before sealing neither of those exists. `ChapterReader` takes a null token,
+`useThreads` uses `skipToken` rather than asking through a link that isn't
+there, and the chapter closes by saying the margins open when the memoir is
+sealed.
+
+## The page is edited by hand, and only by hand
+
+`PageEditor` is the preview's other half: one toggle in the top bar swaps the
+finished page for the same page with controls on it. Reword a passage, reorder
+the page, remove something, rename the chapter, move a photograph to another
+paragraph or another placement. `PATCH /chapters/{id}`, owner bearer only,
+refused once the memoir is sealed.
+
+**Nothing rewrites itself.** The two automatic actions in the product — plan,
+and assemble — are both pressed deliberately, in the archive. There is no
+"improve this paragraph" button here and there should not be: the owner is the
+only party who can tell whether a sentence is true to what their family meant.
+
+**There is no "add a passage" either**, and that one is a rule rather than a
+gap. A paragraph carries `block_source` — which memory it came from and who
+left it — and prose typed into this screen would have nobody behind it, which
+is precisely what the never-fabricate rule forbids. Moving a passage to a
+different chapter is likewise absent: that is the outline's decision, and the
+outline stays editable until sealing.
+
+**Editing words moves offsets, so the backend re-finds every span.** The credit
+follows the phrase it was given for; where the phrase is gone, the name comes
+to rest on the whole passage. The editor says so above the first field, because
+an owner about to rewrite a sentence should know what it costs the margin.
+
+It is not `contenteditable` over the reader. The reader positions credits,
+plates and comment cards by character offset against a measured column, and a
+caret inside that is a layout pass fighting a text cursor.
 
 ## Who this is for
 
@@ -60,7 +134,7 @@ It is also the only screen in the product wider than one column, which the
 
 This is the fact the whole design serves. Chapters are drafted from many
 people's memories and rephrased, so a reader must always be able to ask of any
-sentence *who actually said this* — the product's "never fabricate" rule is
+sentence _who actually said this_ — the product's "never fabricate" rule is
 unenforceable if the answer is not on the page.
 
 So `block_source` carries character offsets into the paragraph, and three
@@ -68,7 +142,7 @@ things follow:
 
 - **The prose carries no marks.** No superscripts, no brackets. It reads as a
   printed page.
-- **A numeral in the left gutter** is the citation key *and* the durable deep
+- **A numeral in the left gutter** is the citation key _and_ the durable deep
   link. One mark doing two jobs, and it survives into print, which a
   hover-only treatment would not.
 - **Attribution is reciprocal.** Hovering a credit underlines the exact clause
@@ -82,10 +156,10 @@ would have to pick a winner.
 
 ## Two right-hand lanes, because they have different lifespans
 
-| Lane | Holds | Sealed? |
-| --- | --- | --- |
+| Lane         | Holds                               | Sealed?               |
+| ------------ | ----------------------------------- | --------------------- |
 | Inner margin | Photographs, voice credits, sources | Yes — with the memoir |
-| Comment lane | The conversation | No. It grows forever |
+| Comment lane | The conversation                    | No. It grows forever  |
 
 Keeping them apart is not decoration. Forty comments accumulating over ten
 years must never push a photograph away from the paragraph that earned it, and
@@ -136,7 +210,7 @@ memories months ago and comments today appearing in one memoir as two people.
   filters it out of every link-addressed response and nothing here should go
   looking for it.
 - **Printing `relationship` raw.** `other` is the default a contributor gets
-  when nobody asked, so it means *unstated*. `relationshipLabel()` returns null
+  when nobody asked, so it means _unstated_. `relationshipLabel()` returns null
   for it and the name stands alone.
 - **Hiding whether the memoir is sealed.** An unpublished memoir says so in the
   masthead and again in the colophon. Letting a family read a draft believing

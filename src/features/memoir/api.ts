@@ -5,11 +5,18 @@
  * `apiRequest`, which owns the base URL, the timeout, and validating the
  * response before it is allowed any further into the app.
  *
- * Every call here is addressed by a **view link token**, sent in the path for
- * the entry point and in `X-Link-Token` for everything after it. There is no
- * `authHeaders()` anywhere in this file, and that is the product working as
- * designed: the family reading a finished memoir have no accounts and never
- * will.
+ * Almost every call here is addressed by a **view link token**, sent in the
+ * path for the entry point and in `X-Link-Token` for everything after it. That
+ * is the product working as designed: the family reading a finished memoir
+ * have no accounts and never will.
+ *
+ * The two exceptions are at the bottom, and they are the same book read by the
+ * one person who does have an account. An owner has to be able to read their
+ * memoir **before** they seal it — no view link exists yet, and sealing is
+ * irreversible, so "read it through first" cannot depend on the thing that
+ * only publication creates. Those two carry a bearer token and nothing else,
+ * and they are kept apart from the rest of the file so no link-addressed call
+ * can quietly grow a second credential.
  *
  * `openMemoir` is the one call that will carry a bearer token, and it is passed
  * in by the gate rather than read here — the owner opening their own memoir is
@@ -24,7 +31,9 @@
  */
 
 import { apiRequest, type ApiRequestCaching } from "@/lib/api/client";
+import { authHeaders } from "@/lib/supabase/client";
 import {
+  chapterEditSchema,
   chapterSchema,
   readerSessionSchema,
   commentCreateSchema,
@@ -32,6 +41,7 @@ import {
   commentThreadSchema,
   memoirReadingSchema,
   type Chapter,
+  type ChapterEdit,
   type CommentCreate,
   type CommentReceipt,
   type CommentThread,
@@ -45,6 +55,7 @@ const ENDPOINTS = {
   reading: (token: string) => `/r/${encodeURIComponent(token)}`,
   chapter: (chapterId: string) => `/chapters/${chapterId}`,
   comments: (chapterId: string) => `/chapters/${chapterId}/comments`,
+  ownerReading: (memoirId: string) => `/memoirs/${memoirId}/chapters`,
 } as const;
 
 type RequestOptions = ApiRequestCaching & { signal?: AbortSignal };
@@ -179,6 +190,79 @@ export async function postComment(
     body,
     headers: linkHeaders(token, reader),
     schema: commentReceiptSchema,
+    ...options,
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/*  The owner, reading their own memoir before anybody else can               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The covers, for the owner. The same response `getReading` returns.
+ *
+ * `GET /memoirs/{id}/chapters` exists for exactly this and answers 404 — never
+ * 403 — for a memoir that is not theirs, so the shape of a failure here says
+ * nothing a stranger could use.
+ */
+export async function getOwnerReading(
+  memoirId: string,
+  options: RequestOptions = {},
+): Promise<MemoirReading> {
+  return apiRequest({
+    path: ENDPOINTS.ownerReading(memoirId),
+    method: "GET",
+    headers: await authHeaders(),
+    schema: memoirReadingSchema,
+    cache: "no-store",
+    ...options,
+  });
+}
+
+/**
+ * One page of the book, corrected by hand. Owner only, and only before sealing.
+ *
+ * Validated on the way out as well as the way in, so a malformed payload fails
+ * at the call site with a readable message rather than as a 422.
+ *
+ * The response is the chapter as it now stands — freshly signed photograph URLs
+ * and re-surveyed credits included — so the page the owner is looking at is
+ * replaced by what was actually stored rather than by what was sent.
+ */
+export async function editChapter(
+  chapterId: string,
+  edit: ChapterEdit,
+  options: RequestOptions = {},
+): Promise<Chapter> {
+  const body = chapterEditSchema.parse(edit);
+
+  return apiRequest({
+    path: ENDPOINTS.chapter(chapterId),
+    method: "PATCH",
+    body,
+    headers: await authHeaders(),
+    schema: chapterSchema,
+    ...options,
+  });
+}
+
+/**
+ * One chapter, for the owner.
+ *
+ * Same route as the reader's, a different credential — the backend tries the
+ * stronger one first, so an owner reading an unpublished chapter does not
+ * depend on a link existing.
+ */
+export async function getOwnerChapter(
+  chapterId: string,
+  options: RequestOptions = {},
+): Promise<Chapter> {
+  return apiRequest({
+    path: ENDPOINTS.chapter(chapterId),
+    method: "GET",
+    headers: await authHeaders(),
+    schema: chapterSchema,
+    cache: "no-store",
     ...options,
   });
 }

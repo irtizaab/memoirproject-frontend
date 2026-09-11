@@ -87,22 +87,113 @@ export type MemoryFormValues = z.output<typeof memoryFormSchema>;
 /* -------------------------------------------------------------------------
  * The book
  * -------------------------------------------------------------------------
- * Three requests the owner makes about the memoir as a whole rather than about
- * one memory: assemble it, seal it, and take a copy away.
+ * What the owner does with the memoir as a whole rather than with one memory,
+ * in the order they do it: plan it, read and correct the plan, assemble it,
+ * seal it, and take a copy away.
+ *
+ * Planning is the step that reads the whole archive and decides what the book
+ * is — chapters, their order, their titles, and where each photograph belongs.
+ * It is a draft until it is assembled, which is the point of it being a
+ * separate step at all: before this, the model's decisions about a family's
+ * book existed only inside one request and nobody ever saw them.
  * ------------------------------------------------------------------------- */
+
+/**
+ * Which of the two assemblers organised the plan. Mirrors `PlanOrigin`.
+ *
+ * `planner` is the model reading the whole archive; `by_date` is the decade
+ * fallback that runs when it cannot. Worth surfacing rather than hiding: the
+ * two are indistinguishable once the book is written, and a deployment with no
+ * model key produces `by_date` for every memoir without saying so.
+ */
+export const planOriginSchema = z.enum(["planner", "by_date"]);
+
+/** Where a photograph sits. Mirrors `figure_placement`, including 0016's carousel. */
+export const plannedPlacementSchema = z.enum(["margin", "inset", "carousel"]);
+
+/** One memory a planned passage drew on. Mirrors `PlannedSource`. */
+export const plannedSourceSchema = z.object({
+  memory_id: z.uuid(),
+  start_offset: z.number().int().nullable().default(null),
+  end_offset: z.number().int().nullable().default(null),
+  diverges: z.boolean().default(false),
+});
+
+/**
+ * One passage in the plan, before it is a row. Mirrors `PlannedBlock`.
+ *
+ * `index` is the passage's position as the server stored it, and it is how an
+ * edit says which passage it means — a passage has no id, because it is not a
+ * row yet, and it cannot be matched by its text because the text is the thing
+ * being edited. It is not the reading order: order is array position, so
+ * moving a passage means sending it earlier carrying the same `index`.
+ */
+export const plannedBlockSchema = z.object({
+  index: z.number().int().nullable().default(null),
+  kind: z.enum(["paragraph", "pull"]),
+  text: z.string(),
+  sources: z.array(plannedSourceSchema).default([]),
+});
+
+/**
+ * Where the model put one photograph. Mirrors `PlannedFigure`.
+ *
+ * Named by memory rather than by passage on purpose — the passages do not
+ * exist as rows until the plan is assembled, and are different rows each run.
+ */
+export const plannedFigureSchema = z.object({
+  asset_id: z.uuid(),
+  anchor_memory_id: z.uuid(),
+  placement: plannedPlacementSchema,
+});
+
+/**
+ * One chapter of the plan. Mirrors `PlannedChapter`.
+ *
+ * `id` is minted when the plan is stored, and it belongs to this plan only —
+ * planning again produces new chapters with new ids, because they are new
+ * chapters. It is what a rename or a move names, so that neither operation
+ * changes which chapter is being operated on.
+ */
+export const plannedChapterSchema = z.object({
+  id: z.uuid(),
+  title: z.string(),
+  from_year: z.number().int().nullable().default(null),
+  through_year: z.number().int().nullable().default(null),
+  blocks: z.array(plannedBlockSchema).default([]),
+  figures: z.array(plannedFigureSchema).default([]),
+  memory_ids: z.array(z.uuid()).default([]),
+});
+
+/**
+ * The plan the owner reads before the book is written. Mirrors `MemoirPlan`.
+ *
+ * `assembled_at` is the difference between a draft they can still change and a
+ * record of what the book was built from. `edited_at` is how the screen knows
+ * whether regenerating would throw away an evening's work.
+ */
+export const memoirPlanSchema = z.object({
+  organised_by: planOriginSchema,
+  generated_at: z.string(),
+  edited_at: z.string().nullable().default(null),
+  assembled_at: z.string().nullable().default(null),
+  chapters: z.array(plannedChapterSchema).default([]),
+});
 
 /**
  * What assembling produced. Mirrors the backend's `AssemblyResult`.
  *
- * Four counts and nothing else — facts about what their archive turned into,
- * with no denominator. `figures` can honestly be lower than the number of
- * photographs: one in a chapter with no prose has no paragraph to sit beside.
+ * Four counts and where the organisation came from — facts about what their
+ * archive turned into, with no denominator. `figures` can honestly be lower
+ * than the number of photographs: one in a chapter with no prose has no
+ * paragraph to sit beside.
  */
 export const assemblyResultSchema = z.object({
   chapters: z.number().int(),
   blocks: z.number().int(),
   sources: z.number().int(),
   figures: z.number().int(),
+  organised_by: planOriginSchema,
 });
 
 /** What sealing gives back. Never the passphrase — see `publishFormSchema`. */
@@ -127,6 +218,12 @@ export const publishFormSchema = z.object({
     .max(256, "Keep it under 256 characters."),
 });
 
+export type PlanOrigin = z.infer<typeof planOriginSchema>;
+export type PlannedPlacement = z.infer<typeof plannedPlacementSchema>;
+export type PlannedBlock = z.infer<typeof plannedBlockSchema>;
+export type PlannedFigure = z.infer<typeof plannedFigureSchema>;
+export type PlannedChapter = z.infer<typeof plannedChapterSchema>;
+export type MemoirPlan = z.infer<typeof memoirPlanSchema>;
 export type AssemblyResult = z.infer<typeof assemblyResultSchema>;
 export type MemoirPublication = z.infer<typeof memoirPublicationSchema>;
 export type PublishFormValues = z.output<typeof publishFormSchema>;

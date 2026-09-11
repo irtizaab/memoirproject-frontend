@@ -31,15 +31,24 @@ import { cn } from "@/lib/utils";
  * as a series is the kind of grandeur that makes a real memoir feel staged.
  */
 export function ReaderFrame({
-  token,
+  base,
   reading,
-  currentChapterId,
+  currentPage,
+  draft = false,
   children,
 }: {
-  token: string;
+  /** The book's address without a page: `/m/{token}` or `/preview/{id}`. */
+  base: string;
   reading: MemoirReading;
-  /** Null on the front and back matter, which are not chapters. */
-  currentChapterId: string | null;
+  /** A chapter id, `"people"`, `"colophon"`, or null on the title page. */
+  currentPage: string | null;
+  /**
+   * The owner reading their own memoir before it is sealed. Says so, once,
+   * where they cannot miss it: the alternative is somebody sharing a link to
+   * this URL believing it is the family's, which it is not — it is behind
+   * their account.
+   */
+  draft?: boolean;
   children: React.ReactNode;
 }) {
   /**
@@ -54,7 +63,7 @@ export function ReaderFrame({
 
   const dates = lifespan(reading);
   const current =
-    reading.chapters.find((chapter) => chapter.id === currentChapterId) ?? null;
+    reading.chapters.find((chapter) => chapter.id === currentPage) ?? null;
   const span = current ? chapterSpan(current, reading) : null;
 
   const copyLink = () => {
@@ -84,7 +93,11 @@ export function ReaderFrame({
             </span>
 
             <span className="hidden font-sans text-xs text-ink-faint sm:block">
-              {reading.published_at ? "Sealed" : "Not yet published"}
+              {draft
+                ? "Your copy · not yet sealed"
+                : reading.published_at
+                  ? "Sealed"
+                  : "Not yet published"}
             </span>
           </div>
         </div>
@@ -120,10 +133,15 @@ export function ReaderFrame({
                   Contents
                 </button>
 
-                <Link href={`/m/${token}/search`} className={pill}>
-                  <Search aria-hidden className="size-3.5" />
-                  Search
-                </Link>
+                {/* The reader's search is addressed by the link token. The
+                    owner already has their own, in the signed-in app, so the
+                    preview does without rather than growing a third one. */}
+                {!draft && (
+                  <Link href={`${base}/search`} className={pill}>
+                    <Search aria-hidden className="size-3.5" />
+                    Search
+                  </Link>
+                )}
 
                 <button type="button" onClick={copyLink} className={pill}>
                   <Link2 aria-hidden className="size-3.5" />
@@ -183,9 +201,9 @@ export function ReaderFrame({
 
       <div className={styles.frame}>
         <ContentsRail
-          token={token}
+          base={base}
           reading={reading}
-          currentChapterId={currentChapterId}
+          currentPage={currentPage}
           collapsed={collapsed}
           open={open}
           onExpand={() => setCollapsed(false)}

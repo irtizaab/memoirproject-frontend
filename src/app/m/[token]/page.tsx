@@ -22,7 +22,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
-import { BookCover, MemoirGate, ReaderFrame } from "@/features/memoir";
+import { MemoirGate, ReaderFrame, TitlePage } from "@/features/memoir";
 import { readReaderSession } from "@/features/memoir/readerSession";
 import { fetchReading } from "@/features/memoir/server";
 import { isApiError } from "@/lib/api/errors";
@@ -58,9 +58,11 @@ export default async function MemoirPage({
 
   if (!reading) notFound();
 
+  const base = `/m/${token}`;
+
   return (
-    <ReaderFrame token={token} reading={reading} currentChapterId={null}>
-      <BookCover token={token} reading={reading} />
+    <ReaderFrame base={base} reading={reading} currentPage={null}>
+      <TitlePage base={base} reading={reading} />
     </ReaderFrame>
   );
 }

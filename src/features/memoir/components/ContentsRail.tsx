@@ -22,17 +22,23 @@ import { cn } from "@/lib/utils";
  * columns legible where four columns of equal weight would not be.
  */
 export function ContentsRail({
-  token,
+  base,
   reading,
-  currentChapterId,
+  currentPage,
   collapsed,
   open,
   onExpand,
   onNavigate,
 }: {
-  token: string;
+  /** The book's address without a page: `/m/{token}` or `/preview/{id}`. */
+  base: string;
   reading: MemoirReading;
-  currentChapterId: string | null;
+  /**
+   * Which page is open — a chapter id, `"people"`, `"colophon"`, or null on
+   * the title page. One prop rather than three booleans, because exactly one
+   * page of a book is open at a time.
+   */
+  currentPage: string | null;
   collapsed: boolean;
   open: boolean;
   onExpand: () => void;
@@ -41,17 +47,26 @@ export function ContentsRail({
   const groups = [
     {
       label: "Front matter",
-      items: [{ id: null, href: `/m/${token}`, title: "Title page" }],
+      items: [{ id: null, href: base, title: "Title page" }],
     },
     {
       label: "Chapters",
       items: reading.chapters.map((chapter) => ({
         id: chapter.id,
-        href: `/m/${token}/${chapter.id}`,
+        href: `${base}/${chapter.id}`,
         title: chapter.title,
         numeral: roman(chapter.ordinal + 1),
         years: chapterYears(chapter),
       })),
+    },
+    {
+      // Real pages, not anchors down the title page. A rail that says "Back
+      // matter" and scrolls the front matter is a rail nobody trusts twice.
+      label: "Back matter",
+      items: [
+        { id: "people", href: `${base}/people`, title: "The people" },
+        { id: "colophon", href: `${base}/colophon`, title: "Colophon" },
+      ],
     },
   ];
 
@@ -83,7 +98,7 @@ export function ContentsRail({
             </span>
 
             {group.items.map((item) => {
-              const isCurrent = item.id === currentChapterId;
+              const isCurrent = item.id === currentPage;
               return (
                 <Link
                   key={item.href}
@@ -121,24 +136,6 @@ export function ContentsRail({
             })}
           </div>
         ))}
-
-        <div>
-          <span className="mb-1.5 block border-b border-border pb-2 font-sans text-[9.5px] font-medium tracking-[0.18em] text-ink-faint uppercase opacity-70">
-            Back matter
-          </span>
-          <Link
-            href={`/m/${token}#people`}
-            onClick={onNavigate}
-            className="relative block py-2 pl-5 text-ink-faint transition-colors group-hover:text-ink-soft hover:!text-foreground"
-          >
-            <span className="absolute top-2.5 left-0 font-sans text-[9.5px] font-medium">
-              ·
-            </span>
-            <span className="block font-heading text-[15px] leading-snug font-light">
-              The people
-            </span>
-          </Link>
-        </div>
       </div>
     </nav>
   );

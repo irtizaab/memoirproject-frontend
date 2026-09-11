@@ -30,7 +30,7 @@ export const sourceMediumSchema = z.enum(["text", "photo", "voice"]);
 export const blockKindSchema = z.enum(["paragraph", "pull", "figure"]);
 
 /** Mirrors `figure_placement`. Chosen by assembly, never by a reader. */
-export const figurePlacementSchema = z.enum(["margin", "inset"]);
+export const figurePlacementSchema = z.enum(["margin", "inset", "carousel"]);
 
 /** One person's memory, and which words of the paragraph came from it. */
 export const blockSourceSchema = z.object({
@@ -133,6 +133,34 @@ export const chapterSchema = z.object({
   /** Everyone whose memories went into it, most-cited first. */
   told_by: z.array(z.string()).default([]),
   memory_count: z.number().int(),
+});
+
+/**
+ * One block, as the owner left it — the request half of editing a page.
+ *
+ * Everything but `id` means "unchanged" when absent, which is what lets a
+ * reorder be sent without re-sending every paragraph's text. The id is how the
+ * server finds the row: it refuses one this chapter does not hold rather than
+ * creating it, because a passage with nobody behind it is a fabricated one.
+ */
+export const blockEditSchema = z.object({
+  id: z.uuid(),
+  text: z.string().optional(),
+  placement: figurePlacementSchema.optional(),
+  anchor_block_id: z.uuid().optional(),
+});
+
+/**
+ * Body of PATCH /chapters/{id}.
+ *
+ * `blocks` is the whole page in reading order, because order is one of the
+ * things being edited and array position *is* the order — the server renumbers
+ * from it and never trusts an ordinal a client sent. Leaving a block out is how
+ * the owner removes it.
+ */
+export const chapterEditSchema = z.object({
+  title: z.string().optional(),
+  blocks: z.array(blockEditSchema).optional(),
 });
 
 /** One row of the back matter's index of people. */
@@ -300,6 +328,8 @@ export type Comment = z.infer<typeof commentSchema>;
 export type CommentThread = z.infer<typeof commentThreadSchema>;
 export type ChapterSummary = z.infer<typeof chapterSummarySchema>;
 export type Chapter = z.infer<typeof chapterSchema>;
+export type BlockEdit = z.infer<typeof blockEditSchema>;
+export type ChapterEdit = z.infer<typeof chapterEditSchema>;
 export type ReaderPerson = z.infer<typeof readerPersonSchema>;
 export type ReaderTotals = z.infer<typeof readerTotalsSchema>;
 export type MemoirReading = z.infer<typeof memoirReadingSchema>;

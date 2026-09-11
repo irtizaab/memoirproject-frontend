@@ -1,8 +1,15 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
+import { TurnNav } from "@/features/memoir/components/BookMatter";
 import { CommentComposer } from "@/features/memoir/components/CommentComposer";
 import { CommentThreadCard } from "@/features/memoir/components/CommentThreadCard";
 import {
@@ -52,20 +59,31 @@ type Draft =
  *    on the page.
  */
 export function ChapterReader({
+  base,
   token,
   reader,
   readerName,
   reading,
   chapter,
 }: {
-  token: string;
-  /** The session this page was rendered with. Says who is reading. */
-  reader: string;
+  /** The book's address without a page: `/m/{token}` or `/preview/{id}`. */
+  base: string;
+  /**
+   * The view link, and the session opened against it. Both null when the owner
+   * is reading their own memoir before sealing it: there is no link yet, so
+   * there is no comment layer either — nobody can have said anything about a
+   * book nobody else can open. The prose and the margin are the whole page
+   * then, which is exactly what the owner is checking.
+   */
+  token: string | null;
+  reader: string | null;
   /** Their name, as given at the door. Printed above a reflection, never asked. */
   readerName: string;
   reading: MemoirReading;
   chapter: Chapter;
 }) {
+  const open = token !== null && reader !== null;
+
   const { data: threads = [] } = useThreads(
     token,
     chapter.id,
@@ -173,9 +191,11 @@ export function ChapterReader({
 
       {chapter.blocks.map((block) => {
         if (block.kind === "figure") {
-          // A margin plate is drawn in the lane, beside its anchor. Only an
-          // inset belongs in the flow — a photograph that is the moment rather
-          // than an illustration of it.
+          // A margin plate is drawn in the lane, beside its anchor, and a
+          // carousel is drawn after the paragraph it belongs to — both by the
+          // paragraph's own branch below. Only an inset belongs in the flow on
+          // its own: a photograph that *is* the moment rather than an
+          // illustration of it.
           return block.figure?.placement === "inset" ? (
             <InsetFigure key={block.id} block={block} />
           ) : null;
@@ -213,6 +233,10 @@ export function ChapterReader({
         const anchor = `p${number}`;
         const blockThreads = threadsForBlock(block.id, threads);
         const marginFigures = figuresFor(block.id, chapter.blocks, "margin");
+        // Several photographs of one moment, shown in turn. The grouping is
+        // the shared anchor — there is no carousel row — so this is the whole
+        // of it.
+        const carousel = figuresFor(block.id, chapter.blocks, "carousel");
         const voice = block.sources.find((s) => s.medium === "voice") ?? null;
 
         return (
@@ -228,9 +252,15 @@ export function ChapterReader({
               onLightSource={setLitSource}
               onFocusThread={setFocusedThread}
               onCopyAnchor={() => copyAnchor(anchor)}
-              onComment={() => setDraft({ kind: "thread", blockId: block.id })}
-              onSelect={setSelection}
+              onComment={
+                open
+                  ? () => setDraft({ kind: "thread", blockId: block.id })
+                  : null
+              }
+              onSelect={open ? setSelection : null}
             />
+
+            {carousel.length > 0 && <FigureCarousel blocks={carousel} />}
 
             {/* ---- lane one: the apparatus, sealed with the book ---- */}
             {marginFigures.map((figure) => (
@@ -275,44 +305,46 @@ export function ChapterReader({
             )}
 
             {/* ---- lane two: the conversation, open forever ---- */}
-            {blockThreads.map((thread) => (
-              <div
-                key={thread.id}
-                data-lane="comment"
-                data-anchor={block.id}
-                className={cn(
-                  styles.lane,
-                  styles.laneComment,
-                  focusedThread === thread.id && styles.laneFocused,
-                )}
-              >
-                <CommentThreadCard
-                  thread={thread}
-                  focused={focusedThread === thread.id}
-                  onFocus={() =>
-                    setFocusedThread((was) =>
-                      was === thread.id ? null : thread.id,
-                    )
-                  }
-                  onReply={() =>
-                    setDraft({ kind: "reply", threadId: thread.id })
-                  }
-                >
-                  {draft?.kind === "reply" && draft.threadId === thread.id && (
-                    <CommentComposer
-                      replying
-                      readerName={readerName}
-                      pending={leave.isPending}
-                      error={leave.error?.message ?? null}
-                      onCancel={() => setDraft(null)}
-                      onSubmit={submit}
-                    />
+            {open &&
+              blockThreads.map((thread) => (
+                <div
+                  key={thread.id}
+                  data-lane="comment"
+                  data-anchor={block.id}
+                  className={cn(
+                    styles.lane,
+                    styles.laneComment,
+                    focusedThread === thread.id && styles.laneFocused,
                   )}
-                </CommentThreadCard>
-              </div>
-            ))}
+                >
+                  <CommentThreadCard
+                    thread={thread}
+                    focused={focusedThread === thread.id}
+                    onFocus={() =>
+                      setFocusedThread((was) =>
+                        was === thread.id ? null : thread.id,
+                      )
+                    }
+                    onReply={() =>
+                      setDraft({ kind: "reply", threadId: thread.id })
+                    }
+                  >
+                    {draft?.kind === "reply" &&
+                      draft.threadId === thread.id && (
+                        <CommentComposer
+                          replying
+                          readerName={readerName}
+                          pending={leave.isPending}
+                          error={leave.error?.message ?? null}
+                          onCancel={() => setDraft(null)}
+                          onSubmit={submit}
+                        />
+                      )}
+                  </CommentThreadCard>
+                </div>
+              ))}
 
-            {draft?.kind === "thread" && draft.blockId === block.id && (
+            {open && draft?.kind === "thread" && draft.blockId === block.id && (
               <div
                 data-lane="comment"
                 data-anchor={block.id}
@@ -346,6 +378,13 @@ export function ChapterReader({
         which ones. A chapter is the right granularity: a byline per paragraph
         would shred the prose.
       */}
+      {!open && (
+        <p className="mt-14 border-t border-border pt-5 font-sans text-xs leading-relaxed text-ink-faint">
+          The margins open when you seal the memoir. Anyone you send the link to
+          can then write in them, and nothing they write changes a word of this.
+        </p>
+      )}
+
       {chapter.told_by.length > 0 && (
         <footer className="mt-14 text-center">
           <p className="font-heading text-2xl italic text-foreground">
@@ -363,48 +402,36 @@ export function ChapterReader({
         </footer>
       )}
 
-      <nav className="mt-16 flex justify-between gap-6 border-t border-border pt-5">
-        {previous ? (
-          <Link
-            href={`/m/${token}/${previous.id}`}
-            className="max-w-[46%] text-ink-faint transition-colors hover:text-foreground"
-          >
-            <span className="eyebrow-muted mb-1.5 block">Back</span>
-            <span className="font-heading text-base leading-snug font-light">
-              {previous.title}
-            </span>
-          </Link>
-        ) : (
-          <Link
-            href={`/m/${token}`}
-            className="max-w-[46%] text-ink-faint transition-colors hover:text-foreground"
-          >
-            <span className="eyebrow-muted mb-1.5 block">Back</span>
-            <span className="font-heading text-base leading-snug font-light">
-              Title page
-            </span>
-          </Link>
-        )}
-
-        {next && (
-          <Link
-            href={`/m/${token}/${next.id}`}
-            className="max-w-[46%] text-right text-ink-faint transition-colors hover:text-foreground"
-          >
-            <span className="eyebrow-muted mb-1.5 block">Onward</span>
-            <span className="font-heading text-base leading-snug font-light">
-              {next.title}
-            </span>
-          </Link>
-        )}
-      </nav>
+      {/* The same turn the matter pages use, so a chapter cannot drift out of
+          the sequence. The last one turns into the back matter rather than
+          into a dead end — the people who remembered them, then the colophon. */}
+      <TurnNav
+        back={
+          previous
+            ? {
+                href: `${base}/${previous.id}`,
+                eyebrow: "Back",
+                title: previous.title,
+              }
+            : { href: base, eyebrow: "Back", title: "Title page" }
+        }
+        onward={
+          next
+            ? {
+                href: `${base}/${next.id}`,
+                eyebrow: "Onward",
+                title: next.title,
+              }
+            : { href: `${base}/people`, eyebrow: "Onward", title: "The people" }
+        }
+      />
 
       {/*
         Selecting a phrase offers to comment on exactly those words. Safe to
         anchor by character offset because a published memoir never changes —
         the text cannot move out from under it.
       */}
-      {selection && (
+      {open && selection && (
         <button
           type="button"
           style={{ left: selection.left, top: selection.top }}
@@ -463,16 +490,19 @@ function Paragraph({
   onLightSource: (id: string | null) => void;
   onFocusThread: (id: string | null) => void;
   onCopyAnchor: () => void;
-  onComment: () => void;
-  onSelect: (
-    selection: {
-      blockId: string;
-      start: number;
-      end: number;
-      left: number;
-      top: number;
-    } | null,
-  ) => void;
+  /** Null where there is no comment layer — see `ChapterReader`'s `token`. */
+  onComment: (() => void) | null;
+  onSelect:
+    | ((
+        selection: {
+          blockId: string;
+          start: number;
+          end: number;
+          left: number;
+          top: number;
+        } | null,
+      ) => void)
+    | null;
 }) {
   const proseRef = useRef<HTMLSpanElement>(null);
   const runs = segment(block.text ?? "", block.sources, threads);
@@ -490,7 +520,11 @@ function Paragraph({
     <p
       id={anchor}
       data-block={block.id}
-      onMouseUp={() => onSelect(readSelection(proseRef.current, block.id))}
+      onMouseUp={
+        onSelect
+          ? () => onSelect(readSelection(proseRef.current, block.id))
+          : undefined
+      }
       className={cn(
         styles.para,
         first && styles.drop,
@@ -557,22 +591,24 @@ function Paragraph({
         {number}
       </a>
 
-      <button
-        type="button"
-        onClick={onComment}
-        title={
-          threads.length > 0
-            ? `${threads.length} comment${threads.length === 1 ? "" : "s"} — add another`
-            : "Add a comment"
-        }
-        className={cn(
-          styles.cmark,
-          threads.length > 0 && styles.cmarkHas,
-          "font-sans text-[10px] font-medium text-ink-faint hover:border-seal hover:text-seal",
-        )}
-      >
-        {threads.length > 0 ? threads.length : "+"}
-      </button>
+      {onComment && (
+        <button
+          type="button"
+          onClick={onComment}
+          title={
+            threads.length > 0
+              ? `${threads.length} comment${threads.length === 1 ? "" : "s"} — add another`
+              : "Add a comment"
+          }
+          className={cn(
+            styles.cmark,
+            threads.length > 0 && styles.cmarkHas,
+            "font-sans text-[10px] font-medium text-ink-faint hover:border-seal hover:text-seal",
+          )}
+        >
+          {threads.length > 0 ? threads.length : "+"}
+        </button>
+      )}
     </p>
   );
 }
@@ -601,6 +637,140 @@ function InsetFigure({ block }: { block: Block }) {
         {figure.credit && (
           <span className="whitespace-nowrap">Given by {figure.credit}</span>
         )}
+      </figcaption>
+    </figure>
+  );
+}
+
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+
+function subscribeToReducedMotion(onChange: () => void): () => void {
+  const query = window.matchMedia(REDUCED_MOTION);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+function reducedMotionNow(): boolean {
+  return window.matchMedia(REDUCED_MOTION).matches;
+}
+
+/**
+ * Several photographs of one moment, in the reading flow, advancing on their own.
+ *
+ * ---------------------------------------------------------------------------
+ * Why it pauses, and why it can be stopped
+ * ---------------------------------------------------------------------------
+ * This sits between paragraphs of a memoir, which is the hardest place in the
+ * product to justify motion: a picture that changes while somebody is reading
+ * competes with the sentence they are reading. So three things are not
+ * optional.
+ *
+ * It stops on hover and on keyboard focus, so nobody loses the photograph they
+ * were looking at by pointing at it. It has a visible pause control, because
+ * WCAG 2.2.2 requires one for anything that moves for more than five seconds
+ * and this moves for as long as the page is open. And it does not move at all
+ * under `prefers-reduced-motion`, where it becomes what it always is
+ * underneath: a row of photographs the reader steps through themselves.
+ *
+ * One photograph is not a carousel, and renders as a plate.
+ */
+function FigureCarousel({ blocks }: { blocks: Block[] }) {
+  const [shown, setShown] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+
+  // Followed rather than merely respected: with reduced motion asked for,
+  // nothing advances by itself and the pause control is not offered — there is
+  // nothing to pause.
+  //
+  // Subscribed to as the external store it is, rather than copied into state
+  // by an effect. The server snapshot is `true` — still — because a reader who
+  // has asked for less motion should not get a frame of movement before the
+  // preference is known.
+  const still = useSyncExternalStore(
+    subscribeToReducedMotion,
+    reducedMotionNow,
+    () => true,
+  );
+
+  const count = blocks.length;
+  const running = !still && !paused && !hovered && count > 1;
+
+  useEffect(() => {
+    if (!running) return;
+    const timer = window.setInterval(
+      () => setShown((was) => (was + 1) % count),
+      5200,
+    );
+    return () => window.clearInterval(timer);
+  }, [running, count]);
+
+  if (count === 1) return <InsetFigure block={blocks[0]} />;
+
+  const current = blocks[Math.min(shown, count - 1)];
+  const figure = current.figure;
+
+  return (
+    <figure
+      className="my-9"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      aria-roledescription="carousel"
+      aria-label="Photographs of this moment"
+    >
+      <div className="relative">
+        {figure?.url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={figure.url}
+            alt={figure.caption ?? "A photograph from this memoir"}
+            className="w-full border border-border object-cover"
+          />
+        ) : (
+          <div className="aspect-3/2 w-full border border-border bg-paper-deep" />
+        )}
+      </div>
+
+      <figcaption className="mt-3 flex flex-wrap items-baseline justify-between gap-x-5 gap-y-2 font-sans text-[9.5px] leading-relaxed font-medium tracking-[0.14em] text-ink-faint uppercase">
+        <span>{figure?.caption}</span>
+        {figure?.credit && (
+          <span className="whitespace-nowrap">Given by {figure.credit}</span>
+        )}
+
+        <span className="flex basis-full items-center gap-3">
+          {/* Real buttons, one per photograph: a reader who wants the third
+              one should be able to go straight to it, and a screen reader
+              should be able to say how many there are. */}
+          {blocks.map((block, index) => (
+            <button
+              key={block.id}
+              type="button"
+              aria-label={`Photograph ${index + 1} of ${count}`}
+              aria-current={index === shown}
+              onClick={() => {
+                setShown(index);
+                // Choosing one is a request to look at it, so stop the clock.
+                setPaused(true);
+              }}
+              className={cn(
+                "size-1.5 rounded-full transition-colors",
+                index === shown ? "bg-seal" : "bg-rule hover:bg-ink-faint",
+              )}
+            />
+          ))}
+
+          {!still && count > 1 && (
+            <button
+              type="button"
+              onClick={() => setPaused((was) => !was)}
+              className="ml-1 font-sans text-[9.5px] tracking-[0.14em] uppercase transition-colors hover:text-foreground"
+            >
+              {paused ? "Play" : "Pause"}
+            </button>
+          )}
+        </span>
       </figcaption>
     </figure>
   );

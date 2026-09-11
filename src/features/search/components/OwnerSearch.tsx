@@ -37,10 +37,14 @@ export function OwnerSearch() {
       source={{ kind: "archive", memoirId: memoir.id }}
       backHref="/archive"
       backLabel="Back to the archive"
-      // A hit in the book links into the reader, which the owner reaches by
-      // the same view link everybody else does. Before publication there is no
-      // link, so a result says what it found and stops there.
-      chapterBase={memoir.view_token ? `/m/${memoir.view_token}` : null}
+      // A hit in the book links into the reader. Published, that is the view
+      // link everybody else holds; before that it is the owner's own preview,
+      // which is addressed by memoir id and needs no link to exist.
+      chapterBase={
+        memoir.published_at && memoir.view_token
+          ? `/m/${memoir.view_token}`
+          : `/preview/${memoir.id}`
+      }
       subjectName={memoir.subject_name}
     />
   );

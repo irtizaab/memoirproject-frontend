@@ -94,13 +94,6 @@ export function storeReaderSession(
   }
 }
 
-/** Forgets it — after the backend has refused it, so the gate is shown again. */
-export function clearReaderSession(token: string): void {
-  if (typeof document === "undefined") return;
-
-  document.cookie = `${readerCookieName(token)}=; path=/m/${encodeURIComponent(token)}; max-age=0`;
-}
-
 /* -------------------------------------------------------------------------
  * Which memoir a link opened
  * -------------------------------------------------------------------------

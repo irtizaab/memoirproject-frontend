@@ -261,22 +261,6 @@ export function segment(
   return runs;
 }
 
-/**
- * The threads anchored to a whole paragraph rather than to a phrase inside it.
- *
- * `segment` cannot show these — they cover no particular words — so the
- * paragraph itself lights up instead, the way a whole-paragraph comment reads
- * in a document.
- */
-export function wholeBlockThreads(
-  blockId: string,
-  threads: CommentThread[],
-): CommentThread[] {
-  return threads.filter(
-    (t) => t.block_id === blockId && t.start_offset === null,
-  );
-}
-
 /** Every thread about a block, however it is anchored. Ordered as it arrived. */
 export function threadsForBlock(
   blockId: string,
@@ -289,7 +273,7 @@ export function threadsForBlock(
 export function figuresFor(
   blockId: string,
   blocks: Block[],
-  placement: "margin" | "inset",
+  placement: "margin" | "inset" | "carousel",
 ): Block[] {
   return blocks.filter(
     (b) =>
@@ -297,9 +281,4 @@ export function figuresFor(
       b.figure?.anchor_block_id === blockId &&
       b.figure.placement === placement,
   );
-}
-
-/** Prose blocks, in reading order. Figures are placed against these. */
-export function proseBlocks(blocks: Block[]): Block[] {
-  return blocks.filter((b) => b.kind !== "figure");
 }

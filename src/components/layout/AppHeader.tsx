@@ -127,7 +127,10 @@ export function AppHeader() {
       this browser must not inherit the last one's archive from a stale cache.
     */
     queryClient.clear();
-    router.push("/onboarding");
+    // The landing page, not `/onboarding`: somebody signing out has an account
+    // and a memoir, and dropping them into "before we begin, one promise" says
+    // their archive is gone. `/` offers the way back in.
+    router.push("/");
   }
 
   return (

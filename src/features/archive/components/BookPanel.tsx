@@ -3,14 +3,24 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BookOpen, Download, Loader2, Lock, Sparkles } from "lucide-react";
+import {
+  BookOpen,
+  Download,
+  Loader2,
+  Lock,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { MemoirSummary } from "@/features/account";
+import { PlanOutline } from "@/features/archive/components/PlanOutline";
 import {
   useAssembleMemoir,
   useExportMemoir,
+  useGeneratePlan,
+  usePlan,
   usePublishMemoir,
 } from "@/features/archive/hooks";
 import {
@@ -34,24 +44,67 @@ import { useTransientLabel } from "@/hooks/useTransientLabel";
  * ---------------------------------------------------------------------------
  * Nothing here appears before there is something to point at
  * ---------------------------------------------------------------------------
- * "View the memoir" and "Export a PDF" are absent — not disabled — until
- * `chapter_count` is above zero. A disabled button is a promise with a reason
- * the person has to guess at; an absent one is answered by the sentence beside
- * it, which says what to do instead.
+ * "Export a PDF" is absent — not disabled — until `chapter_count` is above
+ * zero. A disabled button is a promise with a reason the person has to guess
+ * at; an absent one is answered by the sentence beside it, which says what to
+ * do instead.
+ *
+ * "View the memoir" is the exception and is always there. It is the answer to
+ * "show me the actual page", and a page with nothing in it is a title page
+ * saying the chapters have not been drafted yet — true, and worth being able
+ * to see. A PDF of nothing is a broken file, which is the difference.
  *
  * There is no progress indicator, no percentage and no "your memoir is 40%
  * complete". The archive README forbids it and this is the screen most tempted
  * by it: assembly produces four numbers, and they are facts about what the
  * archive turned into rather than a score against a total nobody has.
+ *
+ * ---------------------------------------------------------------------------
+ * Three steps, because the middle one was missing
+ * ---------------------------------------------------------------------------
+ * Plan, read, assemble.
+ *
+ * It used to be one button. A model decided how a family's memoir divided into
+ * chapters and what each one was called, that decision was written straight
+ * into the book, and the owner saw four counts. They could not read the
+ * outline, could not rename a chapter, and could not tell whether the model
+ * had run at all — a deployment with no key produced a book divided by decade
+ * and said nothing about it.
+ *
+ * So planning is now its own step with its own stored result, `PlanOutline`
+ * renders it, and assembling is what happens once the owner is satisfied.
+ *
+ * ---------------------------------------------------------------------------
+ * Nothing here rewrites the book on the owner's behalf
+ * ---------------------------------------------------------------------------
+ * There are exactly two automatic actions — plan, and assemble — and both are
+ * pressed deliberately. Everything else about the finished memoir is changed
+ * by hand, on the page itself, at `/preview/{memoirId}`. This panel's job is
+ * to say what each button costs before it is pressed: planning again replaces
+ * a corrected outline, and assembling again replaces a corrected page.
  */
 export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
   const memoirId = memoir?.id ?? null;
   const assembled = (memoir?.chapter_count ?? 0) > 0;
   const published = Boolean(memoir?.published_at);
 
+  const planQuery = usePlan(memoirId);
+  const generate = useGeneratePlan(memoirId);
   const assemble = useAssembleMemoir(memoirId);
   const publish = usePublishMemoir(memoirId);
   const exportPdf = useExportMemoir(memoirId);
+
+  const plan = planQuery.data ?? null;
+  const planned = Boolean(plan);
+  // The outline is a draft until the memoir is **sealed** — not until it is
+  // assembled, which is what this used to say. Assembly is not what makes a
+  // character offset permanent; publication is, and an unsealed book is
+  // rewritten wholesale by the next assemble. So the owner can keep correcting
+  // the outline and press "Assemble again" to apply it.
+  //
+  // What that costs is real and is stated below rather than prevented: it
+  // rebuilds the chapters, so anything corrected by hand on the page goes.
+  const planSpent = published;
 
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [copyLabel, showCopyLabel] = useTransientLabel("Copy the reading link");
@@ -95,15 +148,40 @@ export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
             {assembled
               ? published
                 ? "Anyone with the link and the passphrase can read it. Nothing in it can change; what they add to the margins can."
-                : "Read it through before sealing it. Assembling again rebuilds it from everything in the archive, including whatever arrived since."
-              : "Assembling gathers every memory, recording and photograph into chapters, in the order they were lived."}
+                : "Read it through before sealing it. Planning again rebuilds the outline from everything in the archive, including whatever arrived since."
+              : planned
+                ? "Read the outline below and change anything you like. Nothing is written into the book until you assemble it."
+                : "Planning reads every memory, recording and photograph, and works out where the chapters divide, what each is called, and where each photograph belongs."}
           </p>
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2.5">
-          {assembled && memoir?.view_token && (
+          {/*
+            Before sealing, the owner reads their own copy at `/preview`; after
+            it, the link the family holds. Two addresses because they are two
+            different things — one is behind their account, the other behind a
+            passphrase they hand out — and one button at a time, because only
+            one of them is ever the right way in.
+
+            The preview is the whole reason this panel can say "read it through
+            before sealing it". It used to say that while a view link, and so
+            the only way to open the book, did not exist until publication —
+            the one step that cannot be undone.
+
+            **Not conditional on `assembled`**, unlike the PDF beside it. This
+            is the answer to "let me see the actual page", and gating it on a
+            count means the answer is missing at exactly the moment somebody
+            goes looking for it. A PDF of nothing is a broken file; a *page*
+            with nothing in it is a title page that says the chapters have not
+            been drafted yet, which is true and is worth being able to see.
+          */}
+          {memoirId && (
             <a
-              href={`/m/${memoir.view_token}`}
+              href={
+                published && memoir?.view_token
+                  ? `/m/${memoir.view_token}`
+                  : `/preview/${memoirId}`
+              }
               className={buttonVariants({ variant: "outline" })}
             >
               <BookOpen aria-hidden className="size-4" />
@@ -128,6 +206,25 @@ export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
 
           {!published && (
             <Button
+              onClick={() => generate.mutate()}
+              disabled={generate.isPending}
+              variant={planned ? "outline" : "default"}
+            >
+              {generate.isPending ? (
+                <Loader2 aria-hidden className="size-4 animate-spin" />
+              ) : (
+                <Wand2 aria-hidden className="size-4" />
+              )}
+              {generate.isPending
+                ? "Reading the archive…"
+                : planned
+                  ? "Plan it again"
+                  : "Plan the memoir"}
+            </Button>
+          )}
+
+          {!published && planned && (
+            <Button
               onClick={() => assemble.mutate()}
               disabled={assemble.isPending}
               variant={assembled ? "outline" : "default"}
@@ -147,6 +244,30 @@ export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
         </div>
       </div>
 
+      {/* Planning takes minutes, so it says what it is doing while it does it. */}
+      {generate.isPending && (
+        <p className="mt-4 font-sans text-sm text-ink-soft">
+          Reading every memory, and looking at every photograph. This takes a
+          few minutes on a full archive — the page can be left open.
+        </p>
+      )}
+
+      {/* Regenerating throws away corrections, so it says so beforehand. */}
+      {!published && plan?.edited_at && (
+        <p className="mt-4 font-sans text-sm text-ink-soft">
+          You have changed this outline. Planning again replaces it, and those
+          changes go with it.
+        </p>
+      )}
+
+      {/* And so does reassembling, in the other direction. */}
+      {!published && assembled && (
+        <p className="mt-4 font-sans text-sm text-ink-soft">
+          Assembling again rebuilds every chapter from the outline above, which
+          replaces anything you corrected by hand while reading the memoir.
+        </p>
+      )}
+
       {/* The four numbers, stated once, after it has just happened. */}
       {assemble.isSuccess && (
         <p className="mt-4 font-sans text-sm text-ink-soft">
@@ -159,10 +280,31 @@ export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
         </p>
       )}
 
+      {generate.isError && (
+        <p className="mt-4 font-sans text-sm text-seal">
+          {generate.error.message}
+        </p>
+      )}
+
       {assemble.isError && (
         <p className="mt-4 font-sans text-sm text-seal">
           {assemble.error.message}
         </p>
+      )}
+
+      {/* ---------------------------------------------------------------- */}
+      {/* The outline: what the model decided, and the owner's say over it  */}
+      {/* ---------------------------------------------------------------- */}
+      {plan && (
+        // Keyed on the plan's own timestamps, so regenerating or saving hands
+        // `PlanOutline` a fresh draft rather than leaving it holding chapters
+        // whose ids the server no longer has.
+        <PlanOutline
+          key={`${plan.generated_at}:${plan.edited_at ?? ""}`}
+          plan={plan}
+          memoirId={memoirId}
+          readOnly={planSpent}
+        />
       )}
 
       {/* ---------------------------------------------------------------- */}

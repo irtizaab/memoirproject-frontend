@@ -51,5 +51,23 @@ export const accountOverviewSchema = z.object({
   memoirs: z.array(memoirSummarySchema),
 });
 
+/**
+ * The sign-in form.
+ *
+ * Here rather than in `onboarding/` — which has a near-identical
+ * `signupFormSchema` — because signing in is what somebody with an account
+ * does, and this is the account feature. Importing a finished flow's schema
+ * to log in would make `/signin` depend on onboarding forever.
+ *
+ * The rules are deliberately weaker than the signup form's: an existing
+ * password is whatever Supabase already accepted, and re-asserting a minimum
+ * length here would refuse a valid one locally and never send the request.
+ */
+export const signInFormSchema = z.object({
+  email: z.email("Enter a valid email address."),
+  password: z.string().min(1, "Enter your password."),
+});
+
 export type MemoirSummary = z.infer<typeof memoirSummarySchema>;
 export type AccountOverview = z.infer<typeof accountOverviewSchema>;
+export type SignInFormValues = z.output<typeof signInFormSchema>;

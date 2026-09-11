@@ -106,12 +106,28 @@ would record something the user never said.
 | `components/BookCover.tsx` | The generated book-cover mockup shown at signup and pricing. |
 | `components/YearWheel.tsx` | The scroll-snap year picker used by `YearsStep`. |
 
-## Known break
+## The Google handoff
 
-**Google sign-in loses your place.** `signInWithGoogle` redirects back to `/onboarding`, which
-remounts `OnboardingFlow` at `step: "landing"` with the initial state. The draft survives in
-localStorage and on the server, but there is no resume-at-step logic, so the visitor answers all
-four questions again. The email/password path is unaffected.
+`signInWithGoogle` navigates away from the site, so the browser comes back to a **fresh page
+load**: `OnboardingFlow` remounts at `step: "landing"` with `INITIAL_STATE` and every answer gone.
+Worse than losing the answers, nothing then called `claim()` — its only call site was the password
+form's submit handler — so a Google user ended up signed in, with an unclaimed draft, looking at an
+archive that said no memoir had been created. The password path never had the problem because it
+never leaves the page.
+
+Three pieces carry the state across:
+
+1. `SignupStep` calls `storeAnswers(state)` in the instant before the redirect.
+2. `OnboardingFlow` subscribes to `onAuthStateChange` — not `useSupabaseSession` — because the
+   session does not exist when it mounts; `detectSessionInUrl` has to exchange Google's code
+   first, and that callback is when it has. On a session, it calls `takeAnswers()`.
+3. `takeAnswers()` returns non-null **only** on the return leg: the answers are written just
+   before the redirect and cleared the moment they are read. That one-shot read is the signal.
+   An ordinary visit, a token refresh, and a second render all get `null`.
+
+On a hit, the flow restores the answers and jumps straight to `signup` with `autoClaim`, which
+runs the claim on mount and renders progress, the error, and a retry in place of the form — asking
+a signed-in user for an email and password would be asking for something already given.
 
 ## Notes
 

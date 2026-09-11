@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 
 import { useActiveMemoir } from "@/features/account";
 import { useSupabaseSession } from "@/hooks/useSupabaseSession";
+import { takeAnswers } from "@/features/onboarding/draftStorage";
+import { supabase } from "@/lib/supabase/client";
 import { toDraftUpdate, useOnboardingDraft } from "@/features/onboarding/hooks";
 import {
   QUESTION_STEPS,
@@ -46,6 +48,8 @@ export function OnboardingFlow() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("landing");
   const [state, setState] = useState<OnboardingState>(INITIAL_STATE);
+  // Set only by the Google return leg below, and read only by `SignupStep`.
+  const [resumedFromGoogle, setResumedFromGoogle] = useState(false);
 
   const { ensureDraft, saveAnswers, claim, isClaiming, claimError } =
     useOnboardingDraft();
@@ -86,6 +90,42 @@ export function OnboardingFlow() {
       router.replace("/archive");
     }
   }, [step, memoir, session, sessionPending, router]);
+
+  /**
+   * Coming back from "Continue with Google".
+   *
+   * That button leaves the site, so the browser returns to a *fresh page load*
+   * — this component remounts at `landing` with `INITIAL_STATE`, and every
+   * answer the user gave is gone from React state. Nothing then calls
+   * `claim()` either, because its only call site is the password form's submit
+   * handler, which the Google user never touches. The result was a signed-in
+   * account, an unclaimed draft, and an archive reporting no memoir: the whole
+   * flow silently undone by the one button that navigates away.
+   *
+   * Driven by the auth event rather than by `useSupabaseSession`, because the
+   * session does not exist yet when this mounts — `detectSessionInUrl` has to
+   * exchange the code Google put in the URL first, and this is the callback
+   * that fires when it has.
+   *
+   * `takeAnswers` returns non-null only on that return leg: the answers are
+   * written immediately before the redirect and cleared the moment they are
+   * read. So this cannot fire on an ordinary visit, on a token refresh, or
+   * twice.
+   */
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((_event, authSession) => {
+      if (!authSession) return;
+
+      const answers = takeAnswers();
+      if (!answers) return;
+
+      setState(answers);
+      setResumedFromGoogle(true);
+      setStep("signup");
+    });
+
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   function go(to: Step) {
     setStep(to);
@@ -209,6 +249,7 @@ export function OnboardingFlow() {
           isClaiming={isClaiming}
           claimError={claimError}
           onClaimed={() => go("pricing")}
+          autoClaim={resumedFromGoogle}
         />
       )}
       {step === "pricing" && (

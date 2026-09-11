@@ -104,3 +104,22 @@ export type DraftCreated = z.infer<typeof draftCreatedSchema>;
 export type DraftUpdate = z.infer<typeof draftUpdateSchema>;
 export type Draft = z.infer<typeof draftSchema>;
 export type SignupFormValues = z.output<typeof signupFormSchema>;
+
+/**
+ * The flow's own UI state, persisted only across the Google OAuth redirect.
+ *
+ * Parsed rather than cast because localStorage is untrusted input, same as an
+ * API response: a half-written or hand-edited value must read as "no answers"
+ * instead of putting `undefined` into a form field.
+ */
+export const onboardingStateSchema = z.object({
+  name: z.string(),
+  rel: z.string().nullable(),
+  relLabel: z.string(),
+  deep: z.string(),
+  born: z.string(),
+  bornSet: z.boolean(),
+  through: z.string(),
+  throughSet: z.boolean(),
+  term: z.enum(["month", "year"]),
+});

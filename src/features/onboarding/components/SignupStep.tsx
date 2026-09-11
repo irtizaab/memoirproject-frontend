@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -11,6 +11,7 @@ import {
   type SignupFormValues,
 } from "@/features/onboarding/schemas";
 
+import { storeAnswers } from "@/features/onboarding/draftStorage";
 import type { OnboardingState } from "@/features/onboarding/types";
 import { isApiError } from "@/lib/api/errors";
 import {
@@ -35,6 +36,15 @@ type SignupStepProps = {
    * there is no reason to hand the same object round the component tree.
    */
   onClaimed: () => void;
+  /**
+   * True when this page load is the return leg of "Continue with Google".
+   *
+   * The account already exists by then — Supabase created it during the
+   * redirect — so there is nothing to sign up and nothing to ask for. The only
+   * thing still missing is the claim, which the password path does inline in
+   * `onSubmit`. This runs it on arrival instead.
+   */
+  autoClaim?: boolean;
 };
 
 export function SignupStep({
@@ -44,7 +54,13 @@ export function SignupStep({
   isClaiming,
   claimError,
   onClaimed,
+  autoClaim = false,
 }: SignupStepProps) {
+  // Once, not once per render. `onClaim` creates a memoir, and an account is
+  // allowed exactly one — a second run would come back 409 and show the user a
+  // conflict for something that had in fact just worked.
+  const claimAttempted = useRef(false);
+
   // Auth errors, kept separate from claim errors: they fail for different
   // reasons and only one of them is worth retrying with the same input.
   const [authError, setAuthError] = useState<string | null>(null);
@@ -60,6 +76,20 @@ export function SignupStep({
   });
 
   const busy = isAuthenticating || isClaiming;
+
+  useEffect(() => {
+    if (!autoClaim || claimAttempted.current) return;
+    claimAttempted.current = true;
+    void onClaim(state)
+      .then(onClaimed)
+      // Intentionally swallowed: `claimError` renders the message below, and
+      // the retry button re-runs exactly this call.
+      .catch(() => {});
+  }, [autoClaim, onClaim, onClaimed, state]);
+
+  function retryClaim() {
+    void onClaim(state).then(onClaimed).catch(() => {});
+  }
 
   /**
    * Sign up, then claim — in that order, and both before advancing.
@@ -108,8 +138,11 @@ export function SignupStep({
   async function onGoogle() {
     setAuthError(null);
     try {
-      // Comes back to this same page. The draft id and token are already in
-      // localStorage, so the flow can be picked up after the redirect.
+      // Park the answers before leaving. The draft id and token are already in
+      // localStorage; these are the rest of the flow's state, which otherwise
+      // dies with this page — React state does not survive a redirect to
+      // Google and back.
+      storeAnswers(state);
       await signInWithGoogle(`${window.location.origin}/onboarding`);
     } catch (error) {
       setAuthError(
@@ -163,10 +196,46 @@ export function SignupStep({
         Keep this safe
       </h2>
       <p className={styles["ask-sub"]}>
-        Nothing is saved yet. Everyone you invite gets in by link — you&apos;re
-        the only one who ever needs an account.
+        {autoClaim
+          ? "Signed in with Google. Putting the memoir somewhere safe."
+          : "Nothing is saved yet. Everyone you invite gets in by link — you're the only one who ever needs an account."}
       </p>
 
+      {/*
+        The Google return leg. No form: the account exists, so email and
+        password would be asking for something already given. What is left is
+        the claim, which runs on mount — this is its progress and its retry.
+      */}
+      {autoClaim && (
+        <div className={styles.stack}>
+          {claimError && (
+            <p role="alert" className={styles["ask-sub"]}>
+              {claimError.message}
+            </p>
+          )}
+          {alreadyHasMemoir && (
+            <p role="alert" className={styles["ask-sub"]}>
+              You already have a memoir on this account.{" "}
+              <Link href="/archive" style={{ textDecoration: "underline" }}>
+                Open your archive
+              </Link>
+              .
+            </p>
+          )}
+          {!alreadyHasMemoir && (
+            <button
+              type="button"
+              className={`${styles.btn} ${styles["btn-primary"]} ${styles["btn-block"]}`}
+              onClick={retryClaim}
+              disabled={isClaiming}
+            >
+              {isClaiming ? "Saving the memoir…" : "Try again"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {!autoClaim && (
       <form
         className={styles.stack}
         onSubmit={handleSubmit(onSubmit)}
@@ -246,6 +315,7 @@ export function SignupStep({
               : "Save the memoir"}
         </button>
       </form>
+      )}
     </div>
   );
 }

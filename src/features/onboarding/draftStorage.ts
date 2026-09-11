@@ -16,8 +16,10 @@
 
 import {
   draftCreatedSchema,
+  onboardingStateSchema,
   type DraftCreated,
 } from "@/features/onboarding/schemas";
+import type { OnboardingState } from "@/features/onboarding/types";
 
 const STORAGE_KEY = "memoir.draft";
 
@@ -143,4 +145,48 @@ export function clearStoredDraft(): void {
     // Ignored for the same reason as above.
   }
   emit();
+}
+
+/* ---------------------------------------------------------------------------
+   The Google handoff
+   ---------------------------------------------------------------------------
+
+   "Continue with Google" leaves the site. The browser comes back to a fresh
+   page load, which means `OnboardingFlow` remounts at step `landing` with
+   every answer gone — they only ever lived in React state.
+
+   So the answers are parked here on the way out and picked up on the way back.
+   Written *only* immediately before the redirect, which makes their presence
+   the signal that this page load is a return from Google rather than somebody
+   visiting /onboarding with an old draft lying around.
+
+   Not merged into the draft entry above: that one is the credential and
+   survives until the draft is claimed, this one is a single hop and is cleared
+   the moment it has been read.
+*/
+
+const ANSWERS_KEY = "memoir.onboarding.answers";
+
+export function storeAnswers(state: OnboardingState): void {
+  try {
+    window.localStorage.setItem(ANSWERS_KEY, JSON.stringify(state));
+  } catch {
+    // Storage disabled. The redirect still works; the answers are re-asked.
+  }
+}
+
+/** Reads and immediately forgets the parked answers. */
+export function takeAnswers(): OnboardingState | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(ANSWERS_KEY);
+    if (!raw) return null;
+    window.localStorage.removeItem(ANSWERS_KEY);
+
+    const parsed = onboardingStateSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }

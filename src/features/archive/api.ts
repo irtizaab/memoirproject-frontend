@@ -16,11 +16,15 @@ import {
 import { authHeaders } from "@/lib/supabase/client";
 import {
   assemblyResultSchema,
+  chatMessageSchema,
+  chatReplySchema,
   memoirPlanSchema,
   memoirPublicationSchema,
   memoryCreateSchema,
   memorySchema,
   type AssemblyResult,
+  type ChatMessage,
+  type ChatReply,
   type MemoirPlan,
   type MemoirPublication,
   type Memory,
@@ -43,6 +47,7 @@ const ENDPOINTS = {
  */
 const BOOK = {
   plan: (memoirId: string) => `/memoirs/${memoirId}/plan`,
+  chat: (memoirId: string) => `/memoirs/${memoirId}/chat`,
   assemble: (memoirId: string) => `/memoirs/${memoirId}/assemble`,
   publish: (memoirId: string) => `/memoirs/${memoirId}/publish`,
   passphrase: (memoirId: string) => `/memoirs/${memoirId}/passphrase`,
@@ -279,27 +284,37 @@ export async function getPlan(
   });
 }
 
-/**
- * Correct the plan: rename a chapter, move one, drop one.
- *
- * The whole document goes back, not a patch of it — the server renumbers
- * everything from array position and refuses a chapter set that does not match
- * what it holds, so a half-stale client cannot silently lose a chapter.
- *
- * Refused once the plan has been assembled or the memoir sealed. Regenerating
- * is how you start again from there.
- */
-export async function updatePlan(
+/** The conversation with the guide so far, oldest first. */
+export async function listChat(
   memoirId: string,
-  chapters: MemoirPlan["chapters"],
   options: RequestOptions = {},
-): Promise<MemoirPlan> {
+): Promise<ChatMessage[]> {
   return apiRequest({
-    path: BOOK.plan(memoirId),
-    method: "PATCH",
+    path: BOOK.chat(memoirId),
+    method: "GET",
     headers: await authHeaders(),
-    body: { chapters },
-    schema: memoirPlanSchema,
+    schema: z.array(chatMessageSchema),
+    cache: "no-store",
+    ...options,
+  });
+}
+
+/**
+ * Say something to the guide. Allowed the plan's timeout, because the guide
+ * may decide to plan the memoir again inside this request.
+ */
+export async function sendChat(
+  memoirId: string,
+  body: string,
+  options: RequestOptions = {},
+): Promise<ChatReply> {
+  return apiRequest({
+    path: BOOK.chat(memoirId),
+    method: "POST",
+    headers: await authHeaders(),
+    body: { body },
+    schema: chatReplySchema,
+    timeoutMs: PLAN_TIMEOUT_MS,
     ...options,
   });
 }

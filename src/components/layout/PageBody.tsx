@@ -18,7 +18,7 @@ export function PageBody({
 }) {
   return (
     <div
-      className={cn("mx-auto w-full max-w-5xl px-6 py-10 md:py-12", className)}
+      className={cn("mx-auto w-full max-w-7xl px-6 py-10 md:py-12", className)}
     >
       {children}
     </div>

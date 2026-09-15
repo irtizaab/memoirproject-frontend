@@ -7,7 +7,7 @@
 export function AppFooter() {
   return (
     <footer className="mt-auto border-t border-border">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-2 px-6 py-6 font-sans text-xs text-ink-faint">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-6 py-6 font-sans text-xs text-ink-faint">
         <span>A quieter place for the stories that made you.</span>
         {/*
           Safe to read the clock here only because this is a server component:

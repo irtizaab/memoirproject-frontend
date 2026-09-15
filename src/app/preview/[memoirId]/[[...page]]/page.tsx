@@ -42,9 +42,9 @@
  * ---------------------------------------------------------------------------
  * A chapter page carries an "Edit this page" toggle that swaps the reader for
  * `PageEditor` at the same address. Nothing rewrites itself on the owner's
- * behalf: the only automatic action in the product is "Assemble again", back in
- * the archive, and it rebuilds from the outline. Everything else here is theirs
- * to change by hand.
+ * behalf: the only automatic action in the product is building the book, back
+ * in the archive — the button or the guide — and it rebuilds from the outline.
+ * Everything else here is theirs to change by hand.
  */
 
 import { use, useState } from "react";
@@ -84,7 +84,9 @@ export default function PreviewPage({
   const chapter = useOwnerChapter(chapterId);
   const [editing, setEditing] = useState(false);
 
-  if (reading.isPending || chapter.isPending) return <Waiting />;
+  // A disabled query (no chapter in the URL) stays `isPending` forever in
+  // TanStack v5, so wait on `isLoading` — pending *and* fetching.
+  if (reading.isLoading || chapter.isLoading) return <Waiting />;
 
   // 404 is also what a memoir belonging to somebody else answers, so this says
   // the same thing for both rather than guessing which one happened.
@@ -101,6 +103,7 @@ export default function PreviewPage({
   }
 
   const current = isMatter(which) ? which : (chapter.data?.id ?? null);
+  if (!reading.data) return <Waiting />;
   const sealed = Boolean(reading.data.published_at);
   // Editing is refused outright once the memoir is sealed, so the toggle is
   // absent rather than disabled there — the same rule the backend answers 409
@@ -110,7 +113,7 @@ export default function PreviewPage({
   return (
     <div>
       <div className="border-b border-border/70 bg-paper-deep">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-3">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-3">
           <Link
             href="/archive"
             className="inline-flex items-center gap-2 font-sans text-xs text-ink-soft transition-colors hover:text-foreground"

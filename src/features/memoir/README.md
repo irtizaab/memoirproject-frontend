@@ -128,7 +128,7 @@ link is real but your passphrase is wrong" is what turns a forwarded link into
 something worth guessing at.
 
 It is also the only screen in the product wider than one column, which the
-`(app)` shell's centred `max-w-5xl` could not have held.
+`(app)` shell's centred `max-w-7xl` could not have held.
 
 ## A chapter is assembled, not written
 

@@ -44,7 +44,7 @@ export function PageHeader({
 }) {
   return (
     <div className={cn("border-b border-border bg-paper-deep", className)}>
-      <div className="mx-auto w-full max-w-5xl px-6 py-8 md:py-9">
+      <div className="mx-auto w-full max-w-7xl px-6 py-8 md:py-9">
         <header>
           <p className="eyebrow">{eyebrow}</p>
 

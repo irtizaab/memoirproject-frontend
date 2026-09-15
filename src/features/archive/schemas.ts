@@ -172,8 +172,29 @@ export const plannedChapterSchema = z.object({
  * record of what the book was built from. `edited_at` is how the screen knows
  * whether regenerating would throw away an evening's work.
  */
+/** One thing the reviewer noticed. Mirrors `PlanFinding`. */
+export const planFindingSchema = z.object({
+  kind: z.enum(["attribution", "structure", "contradiction", "instruction", "thin"]),
+  chapter: z.string().nullable().default(null),
+  note: z.string(),
+  fixed: z.boolean().default(false),
+});
+
+export const planReviewSchema = z.object({
+  findings: z.array(planFindingSchema).default([]),
+  revised: z.boolean().default(false),
+});
+
+export type PlanFinding = z.infer<typeof planFindingSchema>;
+
 export const memoirPlanSchema = z.object({
   organised_by: planOriginSchema,
+  /** Why it fell back to decades. Only ever set when `organised_by` is `by_date`. */
+  reason: z.string().nullable().default(null),
+  /** Present whenever the reviewer ran, whichever way the plan went. */
+  review: planReviewSchema.nullable().default(null),
+  /** The guide's note to the owner: how planning went, in plain words. */
+  guide: z.string().nullable().default(null),
   generated_at: z.string(),
   edited_at: z.string().nullable().default(null),
   assembled_at: z.string().nullable().default(null),
@@ -227,3 +248,21 @@ export type MemoirPlan = z.infer<typeof memoirPlanSchema>;
 export type AssemblyResult = z.infer<typeof assemblyResultSchema>;
 export type MemoirPublication = z.infer<typeof memoirPublicationSchema>;
 export type PublishFormValues = z.output<typeof publishFormSchema>;
+
+/** One message in the owner's conversation with the guide. Mirrors `ChatMessage`. */
+export const chatMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["owner", "guide"]),
+  body: z.string(),
+  replanned: z.boolean().default(false),
+  created_at: z.string(),
+});
+
+/** The guide's answer, and the new plan when it planned again. */
+export const chatReplySchema = z.object({
+  reply: chatMessageSchema,
+  plan: memoirPlanSchema.nullable().default(null),
+});
+
+export type ChatMessage = z.infer<typeof chatMessageSchema>;
+export type ChatReply = z.infer<typeof chatReplySchema>;

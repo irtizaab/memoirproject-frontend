@@ -17,7 +17,7 @@ export default function SignInPage() {
   return (
     <div className="flex min-h-svh flex-col bg-paper">
       <header className="border-b border-border/70">
-        <div className="mx-auto flex max-w-5xl items-center px-5 py-4">
+        <div className="mx-auto flex max-w-7xl items-center px-5 py-4">
           <Wordmark href="/" />
         </div>
       </header>

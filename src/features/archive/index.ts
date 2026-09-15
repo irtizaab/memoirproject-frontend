@@ -14,26 +14,28 @@ export { MemoryCard } from "@/features/archive/components/MemoryCard";
 export { MemoryComposer } from "@/features/archive/components/MemoryComposer";
 export { MemoryDetail } from "@/features/archive/components/MemoryDetail";
 export { MemoryEditor } from "@/features/archive/components/MemoryEditor";
+export { GuideChat } from "@/features/archive/components/GuideChat";
 export { PlanOutline } from "@/features/archive/components/PlanOutline";
 export {
   archiveKeys,
-  useAssembleMemoir,
   useAttachAssets,
+  useBuildMemoir,
+  useChat,
   useCreateMemory,
   useDeleteMemory,
   useExportMemoir,
-  useGeneratePlan,
   useMemories,
   useMemory,
   usePlan,
   usePublishMemoir,
   useRemoveAsset,
   useReplacePassphrase,
+  useSendChat,
   useUpdateMemory,
-  useUpdatePlan,
 } from "@/features/archive/hooks";
 export type {
   AssemblyResult,
+  ChatMessage,
   MemoirPlan,
   MemoirPublication,
   Memory,

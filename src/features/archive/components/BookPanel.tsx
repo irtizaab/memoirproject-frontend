@@ -8,18 +8,17 @@ import {
   Download,
   Loader2,
   Lock,
-  Sparkles,
   Wand2,
 } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { MemoirSummary } from "@/features/account";
+import { GuideChat } from "@/features/archive/components/GuideChat";
 import { PlanOutline } from "@/features/archive/components/PlanOutline";
 import {
-  useAssembleMemoir,
+  useBuildMemoir,
   useExportMemoir,
-  useGeneratePlan,
   usePlan,
   usePublishMemoir,
 } from "@/features/archive/hooks";
@@ -60,28 +59,23 @@ import { useTransientLabel } from "@/hooks/useTransientLabel";
  * archive turned into rather than a score against a total nobody has.
  *
  * ---------------------------------------------------------------------------
- * Three steps, because the middle one was missing
+ * One button, and a conversation
  * ---------------------------------------------------------------------------
- * Plan, read, assemble.
+ * Build, then talk to the guide.
  *
- * It used to be one button. A model decided how a family's memoir divided into
- * chapters and what each one was called, that decision was written straight
- * into the book, and the owner saw four counts. They could not read the
- * outline, could not rename a chapter, and could not tell whether the model
- * had run at all — a deployment with no key produced a book divided by decade
- * and said nothing about it.
+ * It was one button, then three — plan, read, assemble — because a model was
+ * deciding how a family's memoir divided into chapters and writing it straight
+ * into the book, and the owner could not read the outline, rename a chapter,
+ * or tell whether the model had run at all. The outline became a stored row
+ * with its own editor between the two buttons.
  *
- * So planning is now its own step with its own stored result, `PlanOutline`
- * renders it, and assembling is what happens once the owner is satisfied.
- *
- * ---------------------------------------------------------------------------
- * Nothing here rewrites the book on the owner's behalf
- * ---------------------------------------------------------------------------
- * There are exactly two automatic actions — plan, and assemble — and both are
- * pressed deliberately. Everything else about the finished memoir is changed
- * by hand, on the page itself, at `/preview/{memoirId}`. This panel's job is
- * to say what each button costs before it is pressed: planning again replaces
- * a corrected outline, and assembling again replaces a corrected page.
+ * That editor is now the guide. The plan is still a row, still read back
+ * here (`PlanOutline`), but changing it — a title, an order, a chapter left
+ * out, or the whole division of the memories — is said in words to the guide,
+ * which does it and rebuilds the book in the same request. So "plan" and
+ * "assemble" are one button again, and this panel's job is to say what
+ * pressing it costs: building again replaces a page corrected by hand at
+ * `/preview/{memoirId}`.
  */
 export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
   const memoirId = memoir?.id ?? null;
@@ -89,23 +83,12 @@ export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
   const published = Boolean(memoir?.published_at);
 
   const planQuery = usePlan(memoirId);
-  const generate = useGeneratePlan(memoirId);
-  const assemble = useAssembleMemoir(memoirId);
+  const build = useBuildMemoir(memoirId);
   const publish = usePublishMemoir(memoirId);
   const exportPdf = useExportMemoir(memoirId);
 
   const plan = planQuery.data ?? null;
   const planned = Boolean(plan);
-  // The outline is a draft until the memoir is **sealed** — not until it is
-  // assembled, which is what this used to say. Assembly is not what makes a
-  // character offset permanent; publication is, and an unsealed book is
-  // rewritten wholesale by the next assemble. So the owner can keep correcting
-  // the outline and press "Assemble again" to apply it.
-  //
-  // What that costs is real and is stated below rather than prevented: it
-  // rebuilds the chapters, so anything corrected by hand on the page goes.
-  const planSpent = published;
-
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [copyLabel, showCopyLabel] = useTransientLabel("Copy the reading link");
 
@@ -148,10 +131,8 @@ export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
             {assembled
               ? published
                 ? "Anyone with the link and the passphrase can read it. Nothing in it can change; what they add to the margins can."
-                : "Read it through before sealing it. Planning again rebuilds the outline from everything in the archive, including whatever arrived since."
-              : planned
-                ? "Read the outline below and change anything you like. Nothing is written into the book until you assemble it."
-                : "Planning reads every memory, recording and photograph, and works out where the chapters divide, what each is called, and where each photograph belongs."}
+                : "Read it through before sealing it. Building again reads everything in the archive, including whatever arrived since, and rewrites the book."
+              : "Building reads every memory, recording and photograph, works out where the chapters divide, what each is called, and where each photograph belongs — and writes the book."}
           </p>
         </div>
 
@@ -204,107 +185,79 @@ export function BookPanel({ memoir }: { memoir: MemoirSummary | null }) {
             </Button>
           )}
 
+          {/* Planning and writing, as one step. They are two requests
+              underneath — the plan is still a row the guide can edit — but
+              to the owner "plan" and "assemble" were one decision asked
+              twice. */}
           {!published && (
             <Button
-              onClick={() => generate.mutate()}
-              disabled={generate.isPending}
-              variant={planned ? "outline" : "default"}
+              onClick={() => build.mutate()}
+              disabled={build.isPending}
+              variant={assembled ? "outline" : "default"}
             >
-              {generate.isPending ? (
+              {build.isPending ? (
                 <Loader2 aria-hidden className="size-4 animate-spin" />
               ) : (
                 <Wand2 aria-hidden className="size-4" />
               )}
-              {generate.isPending
-                ? "Reading the archive…"
-                : planned
-                  ? "Plan it again"
-                  : "Plan the memoir"}
-            </Button>
-          )}
-
-          {!published && planned && (
-            <Button
-              onClick={() => assemble.mutate()}
-              disabled={assemble.isPending}
-              variant={assembled ? "outline" : "default"}
-            >
-              {assemble.isPending ? (
-                <Loader2 aria-hidden className="size-4 animate-spin" />
-              ) : (
-                <Sparkles aria-hidden className="size-4" />
-              )}
-              {assemble.isPending
-                ? "Assembling…"
+              {build.isPending
+                ? "Building…"
                 : assembled
-                  ? "Assemble again"
-                  : "Assemble the memoir"}
+                  ? "Build it again"
+                  : "Build the memoir"}
             </Button>
           )}
         </div>
       </div>
 
-      {/* Planning takes minutes, so it says what it is doing while it does it. */}
-      {generate.isPending && (
+      {/* Building takes minutes, so it says what it is doing while it does it. */}
+      {build.isPending && (
         <p className="mt-4 font-sans text-sm text-ink-soft">
           Reading every memory, and looking at every photograph. This takes a
           few minutes on a full archive — the page can be left open.
         </p>
       )}
 
-      {/* Regenerating throws away corrections, so it says so beforehand. */}
-      {!published && plan?.edited_at && (
-        <p className="mt-4 font-sans text-sm text-ink-soft">
-          You have changed this outline. Planning again replaces it, and those
-          changes go with it.
-        </p>
-      )}
-
-      {/* And so does reassembling, in the other direction. */}
+      {/* Rebuilding throws away hand corrections, so it says so beforehand. */}
       {!published && assembled && (
         <p className="mt-4 font-sans text-sm text-ink-soft">
-          Assembling again rebuilds every chapter from the outline above, which
-          replaces anything you corrected by hand while reading the memoir.
+          Building again — here or through the guide — rewrites every chapter,
+          which replaces anything you corrected by hand while reading the
+          memoir.
         </p>
       )}
 
       {/* The four numbers, stated once, after it has just happened. */}
-      {assemble.isSuccess && (
+      {build.isSuccess && (
         <p className="mt-4 font-sans text-sm text-ink-soft">
-          {assemble.data.chapters}{" "}
-          {assemble.data.chapters === 1 ? "chapter" : "chapters"},{" "}
-          {assemble.data.blocks}{" "}
-          {assemble.data.blocks === 1 ? "passage" : "passages"},{" "}
-          {assemble.data.figures}{" "}
-          {assemble.data.figures === 1 ? "photograph" : "photographs"} placed.
+          {build.data.chapters}{" "}
+          {build.data.chapters === 1 ? "chapter" : "chapters"},{" "}
+          {build.data.blocks}{" "}
+          {build.data.blocks === 1 ? "passage" : "passages"},{" "}
+          {build.data.figures}{" "}
+          {build.data.figures === 1 ? "photograph" : "photographs"} placed.
         </p>
       )}
 
-      {generate.isError && (
-        <p className="mt-4 font-sans text-sm text-seal">
-          {generate.error.message}
-        </p>
-      )}
-
-      {assemble.isError && (
-        <p className="mt-4 font-sans text-sm text-seal">
-          {assemble.error.message}
-        </p>
+      {build.isError && (
+        <p className="mt-4 font-sans text-sm text-seal">{build.error.message}</p>
       )}
 
       {/* ---------------------------------------------------------------- */}
       {/* The outline: what the model decided, and the owner's say over it  */}
       {/* ---------------------------------------------------------------- */}
-      {plan && (
-        // Keyed on the plan's own timestamps, so regenerating or saving hands
-        // `PlanOutline` a fresh draft rather than leaving it holding chapters
-        // whose ids the server no longer has.
-        <PlanOutline
-          key={`${plan.generated_at}:${plan.edited_at ?? ""}`}
-          plan={plan}
-          memoirId={memoirId}
-          readOnly={planSpent}
-        />
+      {/* Before sealing: the outline and the conversation that changes it,
+          in one panel. After: the outline as it was organised, and nothing
+          to say about it. */}
+      {plan && published && (
+        <div className="mt-6 border-t border-border pt-5">
+          <PlanOutline plan={plan} sealed />
+        </div>
+      )}
+      {!published && planned && (
+        <div className="mt-6 border-t border-border pt-5">
+          <GuideChat memoirId={memoirId} />
+        </div>
       )}
 
       {/* ---------------------------------------------------------------- */}

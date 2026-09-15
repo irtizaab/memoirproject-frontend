@@ -86,7 +86,7 @@ export function ArchiveScreen() {
           style={{ backgroundImage: `url(${BAND_PHOTOGRAPH})` }}
         />
 
-        <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center gap-10 px-6 pt-12 pb-11 md:flex-row md:items-start md:gap-14">
+        <div className="relative mx-auto flex w-full max-w-7xl flex-col items-center gap-10 px-6 pt-12 pb-11 md:flex-row md:items-start md:gap-14">
           <BookCover
             name={memoir?.subject_name ?? "—"}
             years={coverYears}
@@ -132,7 +132,7 @@ export function ArchiveScreen() {
           score against a total nobody has.
         */}
         {stats && memories && memories.length > 0 && (
-          <div className="relative mx-auto w-full max-w-5xl px-6 pb-10">
+          <div className="relative mx-auto w-full max-w-7xl px-6 pb-10">
             <dl className="grid grid-cols-2 border border-border bg-paper sm:grid-cols-4">
               {stats.map((cell) => (
                 <div
@@ -152,7 +152,7 @@ export function ArchiveScreen() {
 
       {/* ============= BAND TWO: is it working, and who is missing ========== */}
       <div className="border-b border-border">
-        <div className="mx-auto grid w-full max-w-5xl gap-12 px-6 py-11 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="mx-auto grid w-full max-w-7xl gap-12 px-6 py-11 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <InviteBanner linkToken={memoir?.link_token ?? null} />
 
           <div>

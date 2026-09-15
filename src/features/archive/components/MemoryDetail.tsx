@@ -109,7 +109,7 @@ export function MemoryDetail({ memoryId }: { memoryId: string }) {
     <>
       {/* The toolbar. Everything that acts on the memory, above the memory. */}
       <div className="border-b border-border bg-paper-deep">
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-3.5">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-3.5">
           <Link
             href="/archive"
             className="inline-flex items-center gap-2 font-sans text-[13px] text-muted-foreground transition-colors hover:text-foreground"
@@ -148,7 +148,7 @@ export function MemoryDetail({ memoryId }: { memoryId: string }) {
         </div>
 
         {confirming && (
-          <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4 border-t border-border px-6 py-3.5">
+          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 border-t border-border px-6 py-3.5">
             <p className="font-sans text-sm text-seal">
               Delete this permanently? Its recordings and photographs go with
               it.

@@ -231,7 +231,7 @@ export function MemoryEditor({ memoryId }: { memoryId: string }) {
     <>
       {/* The toolbar. Everything that acts on the memory, above the memory. */}
       <div className="border-b border-border bg-paper-deep">
-        <div className="mx-auto w-full max-w-5xl px-6 pt-7 pb-8">
+        <div className="mx-auto w-full max-w-7xl px-6 pt-7 pb-8">
           <Link
             href={`/archive/${memoryId}`}
             className="inline-flex items-center gap-2 font-sans text-[13px] text-muted-foreground transition-colors hover:text-foreground"

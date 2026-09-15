@@ -127,7 +127,7 @@ export function ContributorMemories({
   return (
     <>
       <div className="border-b border-border bg-paper-deep">
-        <div className="mx-auto w-full max-w-5xl px-6 pt-7 pb-8">
+        <div className="mx-auto w-full max-w-7xl px-6 pt-7 pb-8">
           <Link
             href="/contributors"
             className="inline-flex items-center gap-2 font-sans text-[13px] text-muted-foreground transition-colors hover:text-foreground"

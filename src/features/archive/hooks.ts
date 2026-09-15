@@ -28,15 +28,18 @@ import {
   generatePlan,
   getMemory,
   getPlan,
+  listChat,
   listMemories,
   publishMemoir,
   removeAsset,
   replacePassphrase,
+  sendChat,
   updateMemory,
-  updatePlan,
 } from "@/features/archive/api";
 import type {
   AssemblyResult,
+  ChatMessage,
+  ChatReply,
   MemoirPlan,
   MemoirPublication,
   Memory,
@@ -56,6 +59,7 @@ export const archiveKeys = {
   memory: (memoryId: string) =>
     [...archiveKeys.all, "memory", memoryId] as const,
   plan: (memoirId: string) => [...archiveKeys.all, "plan", memoirId] as const,
+  chat: (memoirId: string) => [...archiveKeys.all, "chat", memoirId] as const,
 };
 
 /**
@@ -271,65 +275,34 @@ export function usePlan(memoirId: string | null) {
 }
 
 /**
- * Reads the archive and decides what the book is. The slow one.
+ * Reads the archive, decides what the book is, and writes it. The slow one.
  *
- * Only the plan is invalidated: nothing about the book itself changed, so
- * `GET /me` — whose `chapter_count` gates the reader and the export button —
- * is deliberately left alone. Planning again does not un-assemble a memoir.
+ * Two requests underneath — `POST /plan` then `POST /assemble` — because the
+ * plan is still a row the guide edits between builds. To the owner they were
+ * one decision asked twice, so one button and one mutation. The plan comes
+ * back written straight into the cache: a five-minute wait should not be
+ * followed by a second request to be told what we were just handed. `GET /me`
+ * is invalidated for `chapter_count`, which gates the reader and the export.
  */
-export function useGeneratePlan(memoirId: string | null) {
-  const queryClient = useQueryClient();
-
-  return useMutation<MemoirPlan, Error, void>({
-    mutationFn: () => {
-      if (!memoirId) throw new Error("No memoir is loaded yet.");
-      return generatePlan(memoirId);
-    },
-    onSuccess: (plan) => {
-      // Written straight into the cache as well as invalidated: the response
-      // *is* the new plan, and a five-minute wait should not be followed by a
-      // second request to be told what we were just handed.
-      queryClient.setQueryData(archiveKeys.plan(memoirId ?? "none"), plan);
-    },
-  });
-}
-
-/**
- * Corrects the plan — a renamed chapter, a moved one, a dropped one.
- *
- * Sends the whole chapter list, because the server renumbers from array
- * position rather than trusting an ordinal, and refuses a set that does not
- * match what it holds.
- */
-export function useUpdatePlan(memoirId: string | null) {
-  const queryClient = useQueryClient();
-
-  return useMutation<MemoirPlan, Error, MemoirPlan["chapters"]>({
-    mutationFn: (chapters) => {
-      if (!memoirId) throw new Error("No memoir is loaded yet.");
-      return updatePlan(memoirId, chapters);
-    },
-    onSuccess: (plan) => {
-      queryClient.setQueryData(archiveKeys.plan(memoirId ?? "none"), plan);
-    },
-  });
-}
-
-export function useAssembleMemoir(memoirId: string | null) {
+export function useBuildMemoir(memoirId: string | null) {
   const queryClient = useQueryClient();
 
   return useMutation<AssemblyResult, Error, void>({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!memoirId) throw new Error("No memoir is loaded yet.");
+      const plan = await generatePlan(memoirId);
+      queryClient.setQueryData(archiveKeys.plan(memoirId), plan);
       return assembleMemoir(memoirId);
     },
-    onSuccess: () => {
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: accountKeys.me() });
-      // The plan too: `assembled_at` has just been stamped on it, and that is
-      // what stops the editing controls offering to change a plan the book has
-      // already been built from.
+      // The plan too: `assembled_at` has just been stamped on it. And the
+      // conversation, where the guide has just said what was built.
       void queryClient.invalidateQueries({
         queryKey: archiveKeys.plan(memoirId ?? "none"),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: archiveKeys.chat(memoirId ?? "none"),
       });
     },
   });
@@ -387,6 +360,63 @@ export function useExportMemoir(memoirId: string | null) {
       link.click();
 
       URL.revokeObjectURL(url);
+    },
+  });
+}
+
+/** The conversation with the guide. */
+export function useChat(memoirId: string | null) {
+  return useQuery<ChatMessage[]>({
+    queryKey: archiveKeys.chat(memoirId ?? "none"),
+    queryFn: () => listChat(memoirId as string),
+    enabled: Boolean(memoirId),
+  });
+}
+
+/**
+ * Say something to the guide.
+ *
+ * The owner's message is shown at once, before the reply — the guide can take
+ * minutes when it plans again, and a question that vanishes into a spinner
+ * reads as lost. On reply, the guide's message is appended and, if it planned
+ * again, the plan cache is replaced the way `useGeneratePlan` does it.
+ */
+export function useSendChat(memoirId: string | null) {
+  const queryClient = useQueryClient();
+  const key = archiveKeys.chat(memoirId ?? "none");
+
+  return useMutation<ChatReply, Error, string>({
+    mutationFn: (body) => {
+      if (!memoirId) throw new Error("No memoir is loaded yet.");
+      return sendChat(memoirId, body);
+    },
+    onMutate: (body) => {
+      queryClient.setQueryData<ChatMessage[]>(key, (was = []) => [
+        ...was,
+        {
+          id: `pending-${Date.now()}`,
+          role: "owner",
+          body,
+          replanned: false,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+    },
+    onSuccess: (result) => {
+      queryClient.setQueryData<ChatMessage[]>(key, (was = []) => [
+        ...was,
+        result.reply,
+      ]);
+      if (result.plan) {
+        queryClient.setQueryData(
+          archiveKeys.plan(memoirId ?? "none"),
+          result.plan,
+        );
+      }
+    },
+    onSettled: () => {
+      // Whatever happened, the server's list is the truth.
+      queryClient.invalidateQueries({ queryKey: key });
     },
   });
 }

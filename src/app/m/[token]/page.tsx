@@ -9,7 +9,7 @@
  * Outside the `(app)` route group and with its own chrome, because the people
  * this is for have no account and never will. It is also the only screen in
  * the product wider than a single column, which the `(app)` shell's centred
- * `max-w-5xl` could not hold.
+ * `max-w-7xl` could not hold.
  *
  * Rendered on the server, still — the reader session lives in a cookie rather
  * than `localStorage` precisely so that it arrives with the request and a

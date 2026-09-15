@@ -135,7 +135,7 @@ export function AppHeader() {
 
   return (
     <header className="border-b border-border">
-      <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between gap-6 px-6">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-6 px-6">
         <Wordmark href="/archive" />
 
         <nav aria-label="Main" className="hidden items-center gap-7 md:flex">

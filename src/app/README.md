@@ -27,7 +27,7 @@ Three routes sit outside it on purpose:
 | --- | --- |
 | `/onboarding` | Reached before an account exists, so there is nowhere to navigate to. |
 | `/j/[token]` | A contributor. They have no account and never will, so the signed-in nav would be a set of dead ends. |
-| `/m/[token]` | A reader of the finished memoir. Same reason — and it is also the only screen wider than one column, which the app's `max-w-5xl` measure could not hold. |
+| `/m/[token]` | A reader of the finished memoir. Same reason — and it is also the only screen wider than one column, which the app's `max-w-7xl` measure could not hold. |
 | `/m/[token]/search` | The same reader, searching. Server-rendered as far as the door; the results themselves change as somebody types, so they are a client component. |
 
 `/search` inside `(app)` is its twin: the same screen, the same corpus, the

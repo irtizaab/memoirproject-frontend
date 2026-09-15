@@ -82,7 +82,7 @@ export function SearchScreen({
       {/* The band, and the box in it                                   */}
       {/* ------------------------------------------------------------ */}
       <div className="border-b border-border bg-paper-deep">
-        <div className="mx-auto w-full max-w-5xl px-6 py-8">
+        <div className="mx-auto w-full max-w-7xl px-6 py-8">
           <Link
             href={backHref}
             className="inline-flex items-center gap-2 font-sans text-[13px] text-muted-foreground transition-colors hover:text-foreground"

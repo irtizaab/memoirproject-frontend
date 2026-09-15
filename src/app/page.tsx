@@ -35,7 +35,7 @@ export default function Home() {
   return (
     <div className="min-h-svh bg-paper">
       <header className="border-b border-border/70">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-5 py-4">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4">
           <Wordmark />
 
           <Link
@@ -49,7 +49,7 @@ export default function Home() {
 
       <main>
         {/* ------------------------------------------------------- the hero */}
-        <section className="mx-auto max-w-5xl px-5 pt-20 pb-16">
+        <section className="mx-auto max-w-7xl px-5 pt-20 pb-16">
           <p className="eyebrow-muted">A shared family memoir</p>
           <h1 className="mt-5 max-w-[22ch] font-heading text-[clamp(34px,6vw,58px)] leading-[1.08] font-normal tracking-tight text-balance">
             One book about one person, written by everyone who knew them.
@@ -77,7 +77,7 @@ export default function Home() {
 
         {/* ------------------------------------------------ how it actually goes */}
         <section className="border-t border-border/70 bg-paper-deep">
-          <div className="mx-auto max-w-5xl px-5 py-16">
+          <div className="mx-auto max-w-7xl px-5 py-16">
             <p className="eyebrow-muted">How it goes</p>
             <ol className="mt-8 grid gap-8 sm:grid-cols-3">
               {[
@@ -117,7 +117,7 @@ export default function Home() {
         </section>
 
         {/* ------------------------------------------- what it will not do */}
-        <section className="mx-auto max-w-5xl px-5 py-16">
+        <section className="mx-auto max-w-7xl px-5 py-16">
           <p className="eyebrow-muted">What it will not do</p>
           <dl className="mt-8 grid gap-x-10 gap-y-8 sm:grid-cols-2">
             {[
@@ -155,7 +155,7 @@ export default function Home() {
         </section>
 
         <section className="border-t border-border/70">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-6 px-5 py-14">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-5 py-14">
             <p className="max-w-[38ch] font-heading text-xl leading-snug font-light italic text-ink-soft">
               The house goes quiet either way. This is the part you can still do
               something about.
@@ -169,7 +169,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-border/70">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-8">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-8">
           <p className="font-heading text-sm italic text-ink-soft">
             Preserving generational memories with quiet dignity.
           </p>

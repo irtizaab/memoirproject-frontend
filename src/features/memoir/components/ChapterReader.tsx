@@ -9,7 +9,6 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import { TurnNav } from "@/features/memoir/components/BookMatter";
 import { CommentComposer } from "@/features/memoir/components/CommentComposer";
 import { CommentThreadCard } from "@/features/memoir/components/CommentThreadCard";
 import {
@@ -23,12 +22,12 @@ import type {
   Block,
   Chapter,
   CommentFormValues,
-  MemoirReading,
 } from "@/features/memoir/schemas";
 import { useLanes } from "@/features/memoir/useLanes";
 import {
   chapterYears,
   figuresFor,
+  footnotes,
   roman,
   segment,
   threadsForBlock,
@@ -47,11 +46,14 @@ type Draft =
  * Four things happen on this page that are worth naming, because each is a
  * decision the design rests on:
  *
- * 1. **The prose carries no marks.** No superscripts, no brackets. A paragraph
- *    reads exactly as it would in a printed book.
+ * 1. **Every sourced phrase is marked.** A faint underline under the words one
+ *    person gave, and a footnote numeral after them that matches the credit in
+ *    the margin — so a paragraph woven from four people shows which words are
+ *    whose without hovering. Hovering still lifts both ends.
  * 2. **A gutter numeral does two jobs** — it is the citation key the margin
  *    refers to, and the durable link a reader copies to send somebody "the bit
- *    about the piano". One mark, and it survives into print.
+ *    about the piano". One mark, and it survives into print. The anchor is
+ *    `c{chapter}p{paragraph}`, because every chapter is on the same page.
  * 3. **Attribution is reciprocal.** Hovering a credit underlines the exact
  *    clause it fathered; hovering the clause lifts the credit. This is what a
  *    memoir assembled from twenty people owes its reader.
@@ -59,31 +61,28 @@ type Draft =
  *    on the page.
  */
 export function ChapterReader({
-  base,
   token,
   reader,
   readerName,
-  reading,
+  open,
   chapter,
+  toolbar = null,
 }: {
-  /** The book's address without a page: `/m/{token}` or `/preview/{id}`. */
-  base: string;
   /**
    * The view link, and the session opened against it. Both null when the owner
-   * is reading their own memoir before sealing it: there is no link yet, so
-   * there is no comment layer either — nobody can have said anything about a
-   * book nobody else can open. The prose and the margin are the whole page
-   * then, which is exactly what the owner is checking.
+   * is reading their own memoir on `/preview`; the comment layer then asks
+   * with their bearer token instead.
    */
   token: string | null;
   reader: string | null;
   /** Their name, as given at the door. Printed above a reflection, never asked. */
   readerName: string;
-  reading: MemoirReading;
+  /** Whether the comment lane is drawn: a reader with a session, or the owner. */
+  open: boolean;
   chapter: Chapter;
+  /** The owner's controls for this chapter, drawn at the sheet's top corner. */
+  toolbar?: React.ReactNode;
 }) {
-  const open = token !== null && reader !== null;
-
   const { data: threads = [] } = useThreads(
     token,
     chapter.id,
@@ -94,6 +93,7 @@ export function ChapterReader({
 
   const [focusedThread, setFocusedThread] = useState<string | null>(null);
   const [litSource, setLitSource] = useState<string | null>(null);
+  const [litThread, setLitThread] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [copied, setCopied] = useState(false);
   const [selection, setSelection] = useState<{
@@ -156,12 +156,14 @@ export function ChapterReader({
     window.setTimeout(() => setCopied(false), 1600);
   };
 
-  const index = reading.chapters.findIndex((c) => c.id === chapter.id);
-  const previous = reading.chapters[index - 1];
-  const next = reading.chapters[index + 1];
-
   return (
-    <main ref={rootRef} className={styles.page}>
+    <article
+      ref={rootRef}
+      id={chapter.id}
+      data-page={chapter.id}
+      className={styles.page}
+    >
+      {toolbar && <div className="absolute top-4 right-0 z-10">{toolbar}</div>}
       {/*
         A chapter opens the way a printed one does: an ornament, the number and
         the years it covers, the title, and a rule under it. Centred, which is
@@ -202,41 +204,37 @@ export function ChapterReader({
         }
 
         if (block.kind === "pull") {
-          // Editorial rather than remembered — the assembly step writes these
-          // to mark something the archive disagreed about — so it carries no
-          // sources and says why it is set apart instead of leaving a reader
-          // to wonder who said it.
+          // One line of somebody's own words, verbatim, set apart. The
+          // planner only keeps a pull whose text is found in its one source.
+          const said = block.sources[0];
           return (
-            <aside
+            <blockquote
               key={block.id}
               data-block={block.id}
-              className="my-9 rounded-2xl border border-border bg-muted/60 px-6 py-5"
+              className="my-10 border-l-2 border-seal pl-6"
             >
-              <p className="eyebrow flex items-center gap-2.5">
-                <span
-                  aria-hidden
-                  className="inline-block size-1.5 rounded-full bg-seal"
-                />
-                Where accounts differ
+              <p className="font-heading text-2xl leading-snug font-light italic text-foreground">
+                {pulled(block.text ?? "")}
               </p>
-              <p className="mt-3.5 font-heading text-xl leading-relaxed font-light italic text-foreground">
-                {block.text}
-              </p>
-              <p className="mt-4 border-t border-border pt-3 font-sans text-xs text-ink-faint">
-                Both accounts are kept, and neither has been corrected.
-              </p>
-            </aside>
+              {said && (
+                <footer className="mt-3 font-sans text-[9.5px] font-medium tracking-[0.14em] text-ink-faint uppercase">
+                  — {said.name}, {said.relationship}
+                </footer>
+              )}
+            </blockquote>
           );
         }
 
         const number = numbers.get(block.id) ?? 0;
-        const anchor = `p${number}`;
+        const anchor = `c${chapter.ordinal + 1}p${number}`;
         const blockThreads = threadsForBlock(block.id, threads);
         const marginFigures = figuresFor(block.id, chapter.blocks, "margin");
         // Several photographs of one moment, shown in turn. The grouping is
         // the shared anchor — there is no carousel row — so this is the whole
-        // of it.
-        const carousel = figuresFor(block.id, chapter.blocks, "carousel");
+        // of it. A recording the planner placed sits after them.
+        const placed = figuresFor(block.id, chapter.blocks, "carousel");
+        const carousel = placed.filter((b) => b.figure?.medium !== "audio");
+        const recordings = placed.filter((b) => b.figure?.medium === "audio");
         const voice = block.sources.find((s) => s.medium === "voice") ?? null;
 
         return (
@@ -250,6 +248,7 @@ export function ChapterReader({
               focusedThread={focusedThread}
               litSource={litSource}
               onLightSource={setLitSource}
+              onLightThread={setLitThread}
               onFocusThread={setFocusedThread}
               onCopyAnchor={() => copyAnchor(anchor)}
               onComment={
@@ -261,6 +260,9 @@ export function ChapterReader({
             />
 
             {carousel.length > 0 && <FigureCarousel blocks={carousel} />}
+            {recordings.map((recording) => (
+              <RecordingPlate key={recording.id} block={recording} />
+            ))}
 
             {/* ---- lane one: the apparatus, sealed with the book ---- */}
             {marginFigures.map((figure) => (
@@ -314,7 +316,8 @@ export function ChapterReader({
                   className={cn(
                     styles.lane,
                     styles.laneComment,
-                    focusedThread === thread.id && styles.laneFocused,
+                    (focusedThread === thread.id || litThread === thread.id) &&
+                      styles.laneFocused,
                   )}
                 >
                   <CommentThreadCard
@@ -378,13 +381,6 @@ export function ChapterReader({
         which ones. A chapter is the right granularity: a byline per paragraph
         would shred the prose.
       */}
-      {!open && (
-        <p className="mt-14 border-t border-border pt-5 font-sans text-xs leading-relaxed text-ink-faint">
-          The margins open when you seal the memoir. Anyone you send the link to
-          can then write in them, and nothing they write changes a word of this.
-        </p>
-      )}
-
       {chapter.told_by.length > 0 && (
         <footer className="mt-14 text-center">
           <p className="font-heading text-2xl italic text-foreground">
@@ -401,30 +397,6 @@ export function ChapterReader({
           </p>
         </footer>
       )}
-
-      {/* The same turn the matter pages use, so a chapter cannot drift out of
-          the sequence. The last one turns into the back matter rather than
-          into a dead end — the people who remembered them, then the colophon. */}
-      <TurnNav
-        back={
-          previous
-            ? {
-                href: `${base}/${previous.id}`,
-                eyebrow: "Back",
-                title: previous.title,
-              }
-            : { href: base, eyebrow: "Back", title: "Title page" }
-        }
-        onward={
-          next
-            ? {
-                href: `${base}/${next.id}`,
-                eyebrow: "Onward",
-                title: next.title,
-              }
-            : { href: `${base}/people`, eyebrow: "Onward", title: "The people" }
-        }
-      />
 
       {/*
         Selecting a phrase offers to comment on exactly those words. Safe to
@@ -460,7 +432,7 @@ export function ChapterReader({
       >
         Link copied
       </p>
-    </main>
+    </article>
   );
 }
 
@@ -475,6 +447,7 @@ function Paragraph({
   focusedThread,
   litSource,
   onLightSource,
+  onLightThread,
   onFocusThread,
   onCopyAnchor,
   onComment,
@@ -488,6 +461,7 @@ function Paragraph({
   focusedThread: string | null;
   litSource: string | null;
   onLightSource: (id: string | null) => void;
+  onLightThread: (id: string | null) => void;
   onFocusThread: (id: string | null) => void;
   onCopyAnchor: () => void;
   /** Null where there is no comment layer — see `ChapterReader`'s `token`. */
@@ -506,6 +480,23 @@ function Paragraph({
 }) {
   const proseRef = useRef<HTMLSpanElement>(null);
   const runs = segment(block.text ?? "", block.sources, threads);
+  const notes = footnotes(block.sources);
+  // Where each footnoted source's span ends, so the numeral goes after its
+  // last run rather than after every run it covers.
+  const endsAt = new Map<number, string[]>();
+  for (const source of block.sources) {
+    if (source.end_offset === null || !notes.has(source.id)) continue;
+    endsAt.set(source.end_offset, [
+      ...(endsAt.get(source.end_offset) ?? []),
+      source.id,
+    ]);
+  }
+  // Each run's end offset, in order; runs are contiguous and cover the text.
+  const runEnds: number[] = [];
+  runs.reduce((at, run) => {
+    runEnds.push(at + run.text.length);
+    return at + run.text.length;
+  }, 0);
 
   /**
    * A thread anchored to the whole paragraph has no words of its own to light,
@@ -537,36 +528,60 @@ function Paragraph({
           const lit = run.sources.includes(litSource ?? "");
           const commented = run.threads.length > 0;
           const focused = run.threads.includes(focusedThread ?? "");
+          const sourced = run.sources.length > 0;
+          const marks = (endsAt.get(runEnds[position]) ?? []).map((id) => (
+            <sup
+              key={id}
+              onMouseEnter={() => onLightSource(id)}
+              onMouseLeave={() => onLightSource(null)}
+              className={cn(
+                "ml-px font-sans text-[9.5px] font-medium tracking-[0.04em] transition-colors",
+                litSource === id ? "text-seal" : "text-ink-faint",
+              )}
+            >
+              {notes.get(id)}
+            </sup>
+          ));
 
-          if (!lit && !commented) {
+          if (!sourced && !commented) {
             return <Fragment key={position}>{run.text}</Fragment>;
           }
 
           return (
-            <span
-              key={position}
-              onMouseEnter={() =>
-                run.sources[0] && onLightSource(run.sources[0])
-              }
-              onMouseLeave={() => run.sources[0] && onLightSource(null)}
-              onClick={
-                commented
-                  ? () => onFocusThread(focused ? null : run.threads[0])
-                  : undefined
-              }
-              className={cn(
-                "transition-[box-shadow,background-color]",
-                commented && "cursor-pointer",
-                commented &&
-                  !focused &&
-                  "shadow-[inset_0_-1px_0_0_var(--rule)]",
-                focused &&
-                  "bg-paper-deep shadow-[inset_0_-1px_0_0_var(--seal)]",
-                lit && !focused && "shadow-[inset_0_-1px_0_0_var(--seal)]",
-              )}
-            >
-              {run.text}
-            </span>
+            <Fragment key={position}>
+              <span
+                onMouseEnter={() => {
+                  if (run.sources[0]) onLightSource(run.sources[0]);
+                  if (commented) onLightThread(run.threads[0]);
+                }}
+                onMouseLeave={() => {
+                  if (run.sources[0]) onLightSource(null);
+                  if (commented) onLightThread(null);
+                }}
+                onClick={
+                  commented
+                    ? () => onFocusThread(focused ? null : run.threads[0])
+                    : undefined
+                }
+                className={cn(
+                  "transition-[box-shadow,background-color]",
+                  commented && "cursor-pointer",
+                  sourced &&
+                    !lit &&
+                    !focused &&
+                    "underline decoration-ink-faint/50 decoration-dotted underline-offset-[5px]",
+                  commented &&
+                    !focused &&
+                    "shadow-[inset_0_-1px_0_0_var(--rule)]",
+                  focused &&
+                    "bg-paper-deep shadow-[inset_0_-1px_0_0_var(--seal)]",
+                  lit && !focused && "shadow-[inset_0_-1px_0_0_var(--seal)]",
+                )}
+              >
+                {run.text}
+              </span>
+              {marks}
+            </Fragment>
           );
         })}
       </span>
@@ -614,6 +629,44 @@ function Paragraph({
 }
 
 /* ------------------------------------------------------------------ figures */
+
+/** Curly quotes around a pulled line, unless the model already put some. */
+function pulled(text: string): string {
+  const bare = text.replace(/^[\s"\u201c\u201d]+|[\s"\u201c\u201d]+$/g, "");
+  return `\u201c${bare}\u201d`;
+}
+
+/** A recording the planner placed, playable where it belongs. */
+function RecordingPlate({ block }: { block: Block }) {
+  const figure = block.figure;
+  if (!figure) return null;
+
+  return (
+    <figure className="my-9 rounded-2xl border border-border bg-muted/60 px-5 py-4">
+      {figure.url ? (
+        <audio
+          controls
+          preload="none"
+          src={figure.url}
+          aria-label={
+            figure.credit ? `Recording by ${figure.credit}` : "A recording"
+          }
+          className="h-8 w-full"
+        />
+      ) : (
+        <div aria-hidden className={styles.wave} />
+      )}
+      <figcaption className="mt-3 flex justify-between gap-5 font-sans text-[9.5px] leading-relaxed font-medium tracking-[0.14em] text-ink-faint uppercase">
+        <span>{figure.caption}</span>
+        {figure.credit && (
+          <span className="whitespace-nowrap">
+            In {figure.credit}&apos;s voice
+          </span>
+        )}
+      </figcaption>
+    </figure>
+  );
+}
 
 function InsetFigure({ block }: { block: Block }) {
   const figure = block.figure;

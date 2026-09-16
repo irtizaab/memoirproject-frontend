@@ -265,7 +265,7 @@ function Result({
   chapterBase: string | null;
 }) {
   const href =
-    hit.chapter_id && chapterBase ? `${chapterBase}/${hit.chapter_id}` : null;
+    hit.chapter_id && chapterBase ? `${chapterBase}#${hit.chapter_id}` : null;
 
   const body = (
     <div className="grid items-baseline gap-5 py-6 sm:grid-cols-[112px_minmax(0,1fr)_150px] sm:gap-7">

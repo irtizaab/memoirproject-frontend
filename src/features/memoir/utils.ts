@@ -76,6 +76,21 @@ export function duration(ms: number | null): string | null {
 }
 
 /** "Voice · 1994 · 0:47" — one credit line, in the order the eye wants it. */
+/**
+ * The footnote numeral for each source that covers a *span* of the paragraph,
+ * in the order the margin lists them. A whole-block source gets none: there is
+ * no phrase to put a mark after, and the margin says "whole passage" instead.
+ */
+export function footnotes(sources: BlockSource[]): Map<string, number> {
+  const notes = new Map<string, number>();
+  for (const source of sources) {
+    if (source.start_offset !== null && source.end_offset !== null) {
+      notes.set(source.id, notes.size + 1);
+    }
+  }
+  return notes;
+}
+
 export function credit(source: BlockSource): string {
   const medium =
     source.medium === "voice"

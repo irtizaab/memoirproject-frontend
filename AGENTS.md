@@ -78,11 +78,13 @@ Run `npm run verify` (typecheck + lint + test) before considering work complete.
 /search          the whole memoir, searched            ┘
 /j/[token]       a contributor — its own chrome, server-rendered
 /m/[token]       the finished memoir, opened by a view link AND a passphrase —
-/m/[token]/[page]  its own chrome, server-rendered, four columns wide.
-                 A page is a chapter id, `people`, or `colophon`
+                 its own chrome, server-rendered, four columns wide. The
+                 whole book on one page; `#{chapterId}`, `#people`,
+                 `#colophon` scroll to a part. `/m/[token]/[page]` redirects
+                 an old per-chapter address to the same anchor
 /m/[token]/search  the same search, from inside the book
 /preview/[id]/…  the same book, read by its owner before sealing it —
-                 signed-in, client-fetched, no comment layer, and the one
+                 signed-in, client-fetched, and the one
                  place the finished page is corrected by hand
 ```
 
@@ -95,9 +97,9 @@ and the owner's bearer token. The backend needed nothing —
 `GET /memoirs/{id}/chapters` exists for this and `_reachable_chapter` tries the
 owner's credential before any link. It is the one reader screen fetched in the
 browser, because a Supabase session lives in `localStorage` where a server
-render cannot see it. It carries **no comment layer**: a comment is left by
-somebody holding a link, against text that can never move, and before sealing
-neither exists.
+render cannot see it. The comment lane is open to the owner, on their bearer
+token: the backend attributes the comment to the owner participant, and a
+comment left on the draft is re-surveyed with the passage when it is reworded.
 
 `src/app/(app)/` is a route group: parenthesised, so it adds a layout without adding a URL
 segment. **Its `main` is full-bleed and centres nothing** — a page is bands at different weights
@@ -261,15 +263,18 @@ outline reaches the page.
 
 **And the page itself is corrected by hand, at `/preview/[memoirId]`.**
 `PageEditor` swaps the finished page for the same page with controls on it:
-reword a passage, reorder, remove, rename the chapter, move a photograph to
-another paragraph or another placement. `PATCH /chapters/{id}` — owner only,
+reword a passage, reorder, remove, rename the chapter, move a photograph
+beside another paragraph, add a section. `PATCH /chapters/{id}` — owner only,
 409 once sealed.
 
-The two edits meet in one place and the panel says so before either button is
-pressed: **planning again replaces a corrected outline, and assembling again
-replaces a corrected page.** Nothing rewrites itself on the owner's behalf, and
-there is no "add a passage" anywhere — prose with no `block_source` behind it
-is exactly what the never-fabricate rule forbids.
+**A section is always a memory.** "Add a section here" offers the archive, or
+a box for the owner's own words — which are saved as a memory first, through
+`useCreateMemory`, and only then placed. So every passage still has a person
+behind it. New photographs and recordings come in through the archive; the
+editor says so and links to `/archive/new`.
+
+**Planning again replaces a corrected outline, and assembling again replaces
+a corrected page.** The panel says so before either button is pressed.
 
 **The reader is a book, and it is addressed by a link.** `/m/[token]` resolves a **view**-scoped
 `memoir_link` — a different scope from the contribute link behind `/j/[token]`, so a link posted in
@@ -285,23 +290,30 @@ at length in its README:
   gutter is both the citation key and the durable deep link, and hovering a credit underlines the
   exact words it fathered. This is what makes the "never fabricate" rule checkable by a reader
   rather than merely asserted.
-- **The front and back matter are pages, not sections.** Title page, the
-  chapters in order, the people, the colophon — each with its own address, its
-  own entry in the contents rail, and its own place in the turn buttons, so the
-  last chapter turns into the people rather than into a dead end. They used to
-  be one screen with the rail's "Back matter" pointing at an anchor halfway
-  down the front matter. Every link in the feature is built from a `base` prop
-  (`/m/{token}` or `/preview/{id}`); hard-coding `/m/` anywhere sends the
-  owner's preview into the family's copy, which their session cannot open.
+- **The book is one scrolling page.** Title page, the chapters in order, the
+  people, the colophon — each a `.page` sheet with an id, stacked down
+  `/m/{token}`, every chapter fetched on the server in parallel. The contents
+  rail is anchors into it and marks the part under the reader (`ReaderFrame`
+  measures it on scroll); a paragraph's anchor is `c{chapter}p{n}` so it is
+  unique on the page. `/m/[token]/[page]` and `/preview/[id]/[page]` still
+  accept the old per-chapter address and land on the same anchor. `base`
+  (`/m/{token}` or `/preview/{id}`) is still what the search and the copy-link
+  button build from; hard-coding `/m/` anywhere sends the owner's preview into
+  the family's copy, which their session cannot open.
 - **Two right-hand lanes, not one.** The margin (photographs and sources) is sealed with the
   memoir; the comment lane grows forever. Sharing a lane would let ten years of comments push a
   photograph away from the paragraph that earned it.
-- **Three placements, and the third is in the flow.** `margin` draws in the lane, `inset` runs full
-  measure, and `carousel` is several photographs of one moment shown in turn between the paragraphs
-  — the group is the shared `anchor_block_id`, so there is no carousel row to store. It advances on
-  its own and therefore stops on hover and focus, carries a visible pause control (WCAG 2.2.2), and
-  does not move at all under `prefers-reduced-motion`, where it is a row of photographs the reader
-  steps through. One photograph is not a carousel and renders as a plate.
+- **Photographs are shown in turn after the paragraph they belong to.** `carousel` is the only
+  placement written since backend migration 0018; the group is the shared `anchor_block_id`. The
+  carousel stops on hover and focus, carries a pause control (WCAG 2.2.2), and does not move under
+  `prefers-reduced-motion`. One photograph renders as a plate.
+- **A recording is a figure too.** `figure.medium` is `image` or `audio`; a recording the planner
+  placed renders as `RecordingPlate` — an `<audio preload="none">` after the carousel. The margin
+  `VoiceCredit` is a credit, not a player.
+- **A pulled line is a quotation.** A `pull` block is one person's exact words, drawn as a
+  blockquote with their name under it.
+- **Comments are blurred until reached for.** The comment lane's cards carry `filter: blur` and
+  sharpen on hover, focus, or when the words they anchor to are hovered (`litThread`).
 - **The frame is a fixed width and the prose column is offset by a constant**, so collapsing the
   contents rail cannot reflow a single line. Making the column a fraction of the frame breaks this
   and will not show up in a screenshot.

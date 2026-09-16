@@ -8,15 +8,9 @@ import type { Chapter } from "@/features/memoir/schemas";
 import { makeQueryClient } from "@/lib/query/client";
 
 /**
- * The editor is where the owner overrules the draft, so what is tested is what
- * reaches the request: the whole page, in the order it will be read, with the
- * words they typed and the photograph where they put it.
- *
  * `api.ts` is mocked and nothing below it is — the hook, the query client and
- * the Zod request schema stay real, following the pattern in
- * `features/archive/components/PlanOutline.test.tsx`. A test that stubbed the
- * hook would pass while the payload was wrong, which is the only thing worth
- * checking here.
+ * the Zod request schema stay real. `features/archive` is mocked at its
+ * public surface: the editor only borrows its list and its composer.
  */
 vi.mock("@/features/memoir/api", () => ({
   editChapter: vi.fn(),
@@ -24,6 +18,18 @@ vi.mock("@/features/memoir/api", () => ({
   getOwnerReading: vi.fn(),
   listThreads: vi.fn(),
   postComment: vi.fn(),
+}));
+
+const createMemory = vi.fn();
+vi.mock("@/features/archive", () => ({
+  formatHappenedOn: () => null,
+  labelForKind: (kind: string) => kind,
+  useMemories: () => ({ data: ARCHIVE }),
+  useCreateMemory: () => ({
+    mutate: createMemory,
+    isPending: false,
+    isError: false,
+  }),
 }));
 
 const { editChapter } = await import("@/features/memoir/api");
@@ -66,8 +72,9 @@ const CHAPTER: Chapter = {
       text: null,
       figure: {
         asset_id: "66666666-6666-4666-8666-666666666666",
+        medium: "image",
         url: null,
-        placement: "margin",
+        placement: "carousel",
         anchor_block_id: FIRST,
         caption: "The dock, that summer",
         credit: "Margaret Reyes",
@@ -78,6 +85,44 @@ const CHAPTER: Chapter = {
     },
   ],
 };
+
+const WRITTEN = "77777777-7777-4777-8777-777777777777";
+const UNSPOKEN = "88888888-8888-4888-8888-888888888888";
+
+const memory = (id: string, over: Record<string, unknown>) => ({
+  id,
+  memoir_id: CHAPTER.memoir_id,
+  kind: "text",
+  title: null,
+  body_text: "The piano went to a cousin.",
+  happened_on: null,
+  created_at: "2026-01-01T00:00:00Z",
+  contributor_name: "Nasreen Fatima",
+  contributor_relationship: "self",
+  participant_id: "99999999-9999-4999-8999-999999999999",
+  is_owner: true,
+  assets: [],
+  ...over,
+});
+
+const ARCHIVE = [
+  memory(WRITTEN, {}),
+  memory(UNSPOKEN, {
+    kind: "voice",
+    body_text: null,
+    assets: [
+      {
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        kind: "audio",
+        mime_type: "audio/webm",
+        byte_size: 10,
+        duration_ms: 4000,
+        url: null,
+        transcript: { status: "processing" },
+      },
+    ],
+  }),
+];
 
 function renderEditor(chapter: Chapter = CHAPTER) {
   const onClose = vi.fn();
@@ -103,6 +148,7 @@ async function sent() {
 describe("PageEditor", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    createMemory.mockReset();
     vi.mocked(editChapter).mockResolvedValue(CHAPTER);
   });
 
@@ -185,20 +231,97 @@ describe("PageEditor", () => {
     ).toBeDisabled();
   });
 
-  it("sends a photograph's new placement and anchor, and no text", async () => {
+  it("sends a photograph's new anchor, and no text", async () => {
     const user = userEvent.setup();
     renderEditor();
 
-    await user.selectOptions(screen.getByLabelText(/shown as/i), "inset");
     await user.selectOptions(screen.getByLabelText(/beside/i), SECOND);
     await user.click(save());
 
     const edit = await sent();
-    expect(edit.blocks?.[2]).toEqual({
-      id: PLATE,
-      placement: "inset",
-      anchor_block_id: SECOND,
+    expect(edit.blocks?.[2]).toEqual({ id: PLATE, anchor_block_id: SECOND });
+  });
+
+  it("shows a placed recording as a player beside its anchor", () => {
+    const [first, second, plate] = CHAPTER.blocks;
+    renderEditor({
+      ...CHAPTER,
+      blocks: [
+        first,
+        second,
+        {
+          ...plate,
+          figure: {
+            ...plate.figure!,
+            medium: "audio",
+            url: "https://storage.test/read/voice.webm",
+          },
+        },
+      ],
     });
+
+    expect(screen.getByText("Recording")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Recording by Margaret Reyes"),
+    ).toHaveAttribute("src", "https://storage.test/read/voice.webm");
+    expect(screen.getByRole("combobox", { name: "Beside" })).toBeInTheDocument();
+  });
+
+  it("adds a memory from the archive at the chosen place", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.click(
+      screen.getAllByRole("button", { name: /add a section here/i })[1],
+    );
+    await user.click(
+      screen.getByRole("button", { name: /the piano went to a cousin/i }),
+    );
+    await user.click(save());
+
+    const edit = await sent();
+    expect(edit.blocks?.map((b) => b.id ?? b.memory_id)).toEqual([
+      FIRST,
+      WRITTEN,
+      SECOND,
+      PLATE,
+    ]);
+  });
+
+  it("will not place a recording that has no words yet", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.click(
+      screen.getAllByRole("button", { name: /add a section here/i })[0],
+    );
+    expect(
+      screen.getByRole("button", { name: /not transcribed yet/i }),
+    ).toBeDisabled();
+  });
+
+  it("saves the owner's own words to the archive before placing them", async () => {
+    const user = userEvent.setup();
+    createMemory.mockImplementation(
+      (_body: unknown, opts: { onSuccess: (m: unknown) => void }) =>
+        opts.onSuccess(memory(WRITTEN, { body_text: "Written here." })),
+    );
+    renderEditor();
+
+    await user.click(
+      screen.getAllByRole("button", { name: /add a section here/i })[0],
+    );
+    await user.type(screen.getByLabelText("New section"), "Written here.");
+    await user.click(
+      screen.getByRole("button", { name: /save to the archive/i }),
+    );
+
+    expect(createMemory.mock.calls[0][0]).toEqual({
+      body_text: "Written here.",
+    });
+    await user.click(save());
+    const edit = await sent();
+    expect(edit.blocks?.[0]).toEqual({ memory_id: WRITTEN });
   });
 
   it("sends the renamed chapter", async () => {

@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import styles from "@/features/memoir/reader.module.css";
 import type { MemoirReading } from "@/features/memoir/schemas";
 import { chapterYears, roman } from "@/features/memoir/utils";
@@ -16,13 +14,16 @@ import { cn } from "@/lib/utils";
  * the reader had to hold a mapping between the two. The chapter is the unit a
  * reader moves in, and the year is metadata on it.
  *
+ * The book is one scrolling page, so every entry is an anchor into it — a
+ * chapter's id, `title`, `people` or `colophon` — and `currentPage` is which
+ * of those is under the reader now, measured by `ReaderFrame`.
+ *
  * The whole rail rests at `ink-faint` and lifts on hover of the **rail**, not
  * of a line. At rest it should register as texture, the way running heads and
  * folios do in a printed book — present, and not read. That is what makes four
  * columns legible where four columns of equal weight would not be.
  */
 export function ContentsRail({
-  base,
   reading,
   currentPage,
   collapsed,
@@ -30,15 +31,13 @@ export function ContentsRail({
   onExpand,
   onNavigate,
 }: {
-  /** The book's address without a page: `/m/{token}` or `/preview/{id}`. */
-  base: string;
   reading: MemoirReading;
   /**
-   * Which page is open — a chapter id, `"people"`, `"colophon"`, or null on
-   * the title page. One prop rather than three booleans, because exactly one
-   * page of a book is open at a time.
+   * Which part is under the reader — a chapter id, `"title"`, `"people"` or
+   * `"colophon"`. One prop rather than three booleans, because exactly one
+   * part of a book is being read at a time.
    */
-  currentPage: string | null;
+  currentPage: string;
   collapsed: boolean;
   open: boolean;
   onExpand: () => void;
@@ -47,25 +46,22 @@ export function ContentsRail({
   const groups = [
     {
       label: "Front matter",
-      items: [{ id: null, href: base, title: "Title page" }],
+      items: [{ id: "title", title: "Title page" }],
     },
     {
       label: "Chapters",
       items: reading.chapters.map((chapter) => ({
         id: chapter.id,
-        href: `${base}/${chapter.id}`,
         title: chapter.title,
         numeral: roman(chapter.ordinal + 1),
         years: chapterYears(chapter),
       })),
     },
     {
-      // Real pages, not anchors down the title page. A rail that says "Back
-      // matter" and scrolls the front matter is a rail nobody trusts twice.
       label: "Back matter",
       items: [
-        { id: "people", href: `${base}/people`, title: "The people" },
-        { id: "colophon", href: `${base}/colophon`, title: "Colophon" },
+        { id: "people", title: "The people" },
+        { id: "colophon", title: "Colophon" },
       ],
     },
   ];
@@ -100,11 +96,11 @@ export function ContentsRail({
             {group.items.map((item) => {
               const isCurrent = item.id === currentPage;
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
                   onClick={onNavigate}
-                  aria-current={isCurrent ? "page" : undefined}
+                  aria-current={isCurrent ? "location" : undefined}
                   className={cn(
                     "relative block py-2 pl-5 transition-colors",
                     isCurrent
@@ -131,7 +127,7 @@ export function ContentsRail({
                       {item.years}
                     </span>
                   )}
-                </Link>
+                </a>
               );
             })}
           </div>

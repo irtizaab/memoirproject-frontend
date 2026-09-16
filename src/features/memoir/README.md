@@ -19,23 +19,21 @@ The finished book, as the family reads it. The twin of the backend's
 | `components/BookMatter.tsx`    | `TitlePage`, `PeoplePage`, `ColophonPage` (server components)          |
 | `components/PageEditor.tsx`    | The same page, editable — the owner's own corrections                  |
 
-## A book has pages, and the matter is three of them
+## The book is one scrolling page
 
 The reader walks in one direction: title page, the chapters in order, the
-people, the colophon. Each is a page with its own address, its own entry in the
-contents rail, and its own place in what the turn buttons do — so the last
-chapter turns into the people rather than into a dead end.
+people, the colophon — all on `/m/{token}`, each a `.page` sheet carrying an
+`id` and `data-page`. The contents rail is anchors into that page, and
+`ReaderFrame` measures which part is under the reader on scroll so the rail
+and the lifespan mark follow. A chapter is sent to somebody as
+`/m/{token}#{chapterId}`; a paragraph as `#c2p4`, chapter then paragraph, so
+no two paragraphs on the page share an anchor.
 
-It was one page until it wasn't. The title page carried the contents, the index
-of people and the colophon stacked down it, and the rail's "Back matter"
-pointed at `/m/{token}#people` — an anchor halfway down the _front_ matter. A
-book whose every chapter is a page had a first page four pages long, and the
-colophon appeared in no contents at all.
-
-The chapters and the two matter pages share one route, `/m/[token]/[page]`,
-because they need the same session, the same covers and the same frame and
-differ only in what fills the column. `people` and `colophon` cannot collide
-with a chapter: a chapter id is a UUID.
+Each `.page` is still its own offset parent, so the two lanes are measured
+per chapter exactly as they were when a chapter was a route. The rail is
+`position: sticky` with zero height so it stays in flow without taking room
+above the sheets. `/m/[token]/[page]` remains only to redirect an old
+per-chapter address to its anchor.
 
 ## Two credentials, one book
 
@@ -56,12 +54,10 @@ the owner's credential is a Supabase session in `localStorage`, which a server
 render cannot see. The family's copy stays server-rendered, because a cookie
 does reach the server.
 
-**The preview has no comment layer.** Not a simplification — a comment is left
-by somebody holding the link, against a passage that can never move afterwards,
-and before sealing neither of those exists. `ChapterReader` takes a null token,
-`useThreads` uses `skipToken` rather than asking through a link that isn't
-there, and the chapter closes by saying the margins open when the memoir is
-sealed.
+**The preview has the comment layer, on the owner's bearer.** `ChapterReader`
+takes a null token and `open`; `listThreads` and `postComment` send
+`authHeaders()` when there is no link. The backend attributes the comment to
+the owner participant and re-surveys its offsets if the passage is reworded.
 
 ## The page is edited by hand, and only by hand
 
@@ -76,12 +72,10 @@ and assemble — are both pressed deliberately, in the archive. There is no
 "improve this paragraph" button here and there should not be: the owner is the
 only party who can tell whether a sentence is true to what their family meant.
 
-**There is no "add a passage" either**, and that one is a rule rather than a
-gap. A paragraph carries `block_source` — which memory it came from and who
-left it — and prose typed into this screen would have nobody behind it, which
-is precisely what the never-fabricate rule forbids. Moving a passage to a
-different chapter is likewise absent: that is the outline's decision, and the
-outline stays editable until sealing.
+**A section is added by naming a memory.** The owner picks one from the
+archive, or writes one — saved to the archive first, then placed. Prose with
+nobody behind it is never written here. Moving a passage to a different chapter
+is absent: that is the outline's decision.
 
 **Editing words moves offsets, so the backend re-finds every span.** The credit
 follows the phrase it was given for; where the phrase is gone, the name comes

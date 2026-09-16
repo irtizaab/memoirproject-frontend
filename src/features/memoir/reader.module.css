@@ -70,12 +70,19 @@
 
 /* ------------------------------------------------------------------ contents */
 
+/*
+ * The whole book is one scrolling page, so the rail sticks. Zero height with
+ * its content overflowing: a sticky box has to be in flow, and one with no
+ * height takes no room above the pages that follow it. `top` clears the
+ * sticky masthead card above.
+ */
 .rail {
-  position: absolute;
-  left: 0;
-  top: 0;
+  position: sticky;
+  top: 6rem;
+  height: 0;
   width: var(--rail);
   padding-top: 3.5rem;
+  z-index: 2;
 }
 
 .railBody {
@@ -117,6 +124,16 @@
   margin-left: calc(var(--rail) + var(--gutter));
   padding-top: 3.5rem;
   padding-bottom: 3rem;
+  /* A contents link lands the page under the sticky masthead otherwise. */
+  scroll-margin-top: 9.5rem;
+}
+
+.page + .page {
+  margin-top: 3rem;
+}
+
+.page [id] {
+  scroll-margin-top: 10rem;
 }
 
 /*
@@ -210,7 +227,9 @@
 
 .lane {
   position: absolute;
-  transition: opacity var(--step);
+  transition:
+    opacity var(--step),
+    filter var(--step);
 }
 
 .laneMargin {
@@ -228,15 +247,17 @@
   opacity: 1;
 }
 
+/* Blurred until the reader reaches for it — or for the words it is about. */
 .laneComment {
   left: calc(100% + var(--mgap) + var(--marginw) + var(--cgap));
   width: var(--commentw);
-  opacity: 0.72;
+  filter: blur(3px);
 }
 
 .laneComment:hover,
+.laneComment:focus-within,
 .laneComment.laneFocused {
-  opacity: 1;
+  filter: none;
 }
 
 /* The waveform standing in for a recording — bars, drawn with a gradient
@@ -337,6 +358,7 @@
     left: 0;
     top: 0;
     bottom: 0;
+    height: auto;
     z-index: 60;
     width: 300px;
     max-width: 86vw;

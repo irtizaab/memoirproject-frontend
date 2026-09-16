@@ -108,9 +108,6 @@ export type MemoryFormValues = z.output<typeof memoryFormSchema>;
  */
 export const planOriginSchema = z.enum(["planner", "by_date"]);
 
-/** Where a photograph sits. Mirrors `figure_placement`, including 0016's carousel. */
-export const plannedPlacementSchema = z.enum(["margin", "inset", "carousel"]);
-
 /** One memory a planned passage drew on. Mirrors `PlannedSource`. */
 export const plannedSourceSchema = z.object({
   memory_id: z.uuid(),
@@ -144,7 +141,6 @@ export const plannedBlockSchema = z.object({
 export const plannedFigureSchema = z.object({
   asset_id: z.uuid(),
   anchor_memory_id: z.uuid(),
-  placement: plannedPlacementSchema,
 });
 
 /**
@@ -240,7 +236,6 @@ export const publishFormSchema = z.object({
 });
 
 export type PlanOrigin = z.infer<typeof planOriginSchema>;
-export type PlannedPlacement = z.infer<typeof plannedPlacementSchema>;
 export type PlannedBlock = z.infer<typeof plannedBlockSchema>;
 export type PlannedFigure = z.infer<typeof plannedFigureSchema>;
 export type PlannedChapter = z.infer<typeof plannedChapterSchema>;

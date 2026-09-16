@@ -56,7 +56,7 @@ export const blockSourceSchema = z.object({
 });
 
 /**
- * A photograph on the page.
+ * A photograph or a recording on the page.
  *
  * `url` is freshly signed and expiring, exactly like `MediaAsset.url`. The
  * caption is the contributor's own words about their own photograph, read from
@@ -64,6 +64,7 @@ export const blockSourceSchema = z.object({
  */
 export const figureSchema = z.object({
   asset_id: z.uuid(),
+  medium: z.enum(["image", "audio"]).default("image"),
   url: z.string().nullable(),
   placement: figurePlacementSchema,
   /** The paragraph this belongs beside. A margin plate is positioned by it. */
@@ -136,27 +137,28 @@ export const chapterSchema = z.object({
 });
 
 /**
- * One block, as the owner left it — the request half of editing a page.
- *
- * Everything but `id` means "unchanged" when absent, which is what lets a
- * reorder be sent without re-sending every paragraph's text. The id is how the
- * server finds the row: it refuses one this chapter does not hold rather than
- * creating it, because a passage with nobody behind it is a fabricated one.
+ * One entry of a corrected page: a block the chapter holds (`id`, the rest
+ * meaning "unchanged" when absent), a memory to add as a section
+ * (`memory_id`), or one photograph or recording to add to the carousel after
+ * the paragraph above it (`asset_id`).
  */
-export const blockEditSchema = z.object({
-  id: z.uuid(),
-  text: z.string().optional(),
-  placement: figurePlacementSchema.optional(),
-  anchor_block_id: z.uuid().optional(),
-});
+export const blockEditSchema = z
+  .object({
+    id: z.uuid().optional(),
+    memory_id: z.uuid().optional(),
+    asset_id: z.uuid().optional(),
+    text: z.string().optional(),
+    anchor_block_id: z.uuid().optional(),
+  })
+  .refine(
+    (b) =>
+      [b.id, b.memory_id, b.asset_id].filter((x) => x !== undefined).length === 1,
+    { message: "give exactly one of id, memory_id or asset_id" },
+  );
 
 /**
- * Body of PATCH /chapters/{id}.
- *
- * `blocks` is the whole page in reading order, because order is one of the
- * things being edited and array position *is* the order — the server renumbers
- * from it and never trusts an ordinal a client sent. Leaving a block out is how
- * the owner removes it.
+ * Body of PATCH /chapters/{id}. `blocks` is the whole page in reading order —
+ * array position is the order — and leaving a block out removes it.
  */
 export const chapterEditSchema = z.object({
   title: z.string().optional(),

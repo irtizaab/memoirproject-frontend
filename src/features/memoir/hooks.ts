@@ -62,11 +62,8 @@ export function useThreads(
 ) {
   return useQuery({
     queryKey: memoirKeys.threads(chapterId),
-    // `skipToken` rather than `enabled`, because it also narrows the token:
-    // with no view link there is nothing to ask through — the owner previewing
-    // their own unsealed memoir — and `listThreads` without one is a 404,
-    // which is a lie in the console on a page that is working correctly.
-    queryFn: token ? () => listThreads(token, chapterId, reader) : skipToken,
+    // A null token is the owner on `/preview`, asking with their bearer.
+    queryFn: () => listThreads(token, chapterId, reader),
     initialData: initial,
   });
 }
@@ -92,13 +89,7 @@ export function useLeaveComment(
   const queryClient = useQueryClient();
 
   return useMutation<CommentReceipt, Error, CommentCreate>({
-    // Null only where the composer is never rendered — see `useThreads`. A
-    // mutation cannot be skipped the way a query can, so it refuses instead of
-    // sending a comment nobody could have written.
-    mutationFn: (comment) =>
-      token
-        ? postComment(token, chapterId, reader, comment)
-        : Promise.reject(new Error("This memoir has not been sealed yet.")),
+    mutationFn: (comment) => postComment(token, chapterId, reader, comment),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: memoirKeys.threads(chapterId),

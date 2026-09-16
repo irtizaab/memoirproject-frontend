@@ -5,13 +5,8 @@ import { ContentsRail } from "@/features/memoir/components/ContentsRail";
 import type { MemoirReading } from "@/features/memoir/schemas";
 
 /**
- * The rail is the book's structure, stated. What is tested is that it says the
- * same thing the routes do.
- *
- * The regression it exists for: "Back matter" used to be one entry pointing at
- * `/m/{token}#people` — an anchor halfway down the front matter. The rail
- * named a part of the book that was not a page, and the colophon appeared in
- * no contents at all.
+ * The rail is the book's structure, stated. The book is one scrolling page,
+ * so every entry is an anchor into it, and the one under the reader is marked.
  */
 const READING: MemoirReading = {
   memoir_id: "00000000-0000-4000-8000-000000000000",
@@ -33,12 +28,11 @@ const READING: MemoirReading = {
   totals: { memories: 91, people: 23, chapters: 1, recordings: 14 },
 };
 
-function rail(base = "/m/tok") {
+function rail(currentPage = "title") {
   return render(
     <ContentsRail
-      base={base}
       reading={READING}
-      currentPage={null}
+      currentPage={currentPage}
       collapsed={false}
       open={false}
       onExpand={vi.fn()}
@@ -56,29 +50,30 @@ describe("ContentsRail", () => {
     expect(screen.getByText("Back matter")).toBeInTheDocument();
   });
 
-  it("points the back matter at pages, not at an anchor", () => {
+  it("anchors every part into the one page", () => {
     rail();
 
-    // The `#people` anchor is the bug: a link into the middle of another page
-    // cannot be the whole of "back matter".
     // Named loosely: every rail entry carries a numeral beside its title, so
     // the accessible name is "· The people" rather than the title alone.
     for (const [name, href] of [
-      [/the people/i, "/m/tok/people"],
-      [/colophon/i, "/m/tok/colophon"],
+      [/title page/i, "#title"],
+      [/ellsworth lane/i, `#${READING.chapters[0].id}`],
+      [/the people/i, "#people"],
+      [/colophon/i, "#colophon"],
     ] as const) {
       expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
     }
   });
 
-  it("builds every link from the base it was given", () => {
-    // The owner's preview is the same rail at a different address. If anything
-    // here hard-codes `/m/`, the preview navigates the family's copy instead —
-    // and they have no session for it.
-    rail("/preview/abc");
+  it("marks the part under the reader", () => {
+    rail("people");
 
-    for (const link of screen.getAllByRole("link")) {
-      expect(link.getAttribute("href")).toMatch(/^\/preview\/abc/);
-    }
+    expect(screen.getByRole("link", { name: /the people/i })).toHaveAttribute(
+      "aria-current",
+      "location",
+    );
+    expect(
+      screen.getByRole("link", { name: /title page/i }),
+    ).not.toHaveAttribute("aria-current");
   });
 });

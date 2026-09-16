@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import styles from "@/features/memoir/reader.module.css";
 import type { MemoirReading } from "@/features/memoir/schemas";
 import {
@@ -11,47 +9,25 @@ import {
 } from "@/features/memoir/utils";
 
 /**
- * The front and back matter — three pages, not one.
+ * The front and back matter — three parts of one scrolling page.
  *
  * These are what make the reader a book rather than a screen, and they cost
  * almost nothing: every number below is already in the response that draws the
  * contents rail.
  *
- * ---------------------------------------------------------------------------
- * Why they are separate pages
- * ---------------------------------------------------------------------------
- * They used to be one screen — title page, contents, the people and the
- * colophon stacked down `/m/{token}`, with the contents rail pointing at
- * `#people`. That made the rail dishonest: "Back matter" named an anchor
- * halfway down the front matter, and a book whose every chapter is a page had
- * a first page four pages long.
- *
- * A memoir is read in one direction. So each of these is a page with its own
- * address, its own entry in the contents, and its own place in the sequence
- * the turn buttons walk: title page, the chapters in order, the people, the
- * colophon. A granddaughter can send somebody the list of everyone who
- * remembered her grandmother without sending them the title page.
+ * The whole book is one page: title, the chapters in order, the people, the
+ * colophon, each a `.page` sheet with an id the contents rail scrolls to. A
+ * granddaughter sends somebody a chapter as `/m/{token}#{chapterId}`, and the
+ * rail marks whichever part is under the reader.
  *
  * Server components. Nothing here reacts to anything, so nothing here needs to
  * ship to the browser.
- *
- * `base` is the book's address without a page — `/m/{token}` for the family,
- * `/preview/{memoirId}` for the owner reading before they seal it. Every link
- * in the reader is built from it, which is the whole of what those two paths
- * have to disagree about.
  */
-export function TitlePage({
-  base,
-  reading,
-}: {
-  base: string;
-  reading: MemoirReading;
-}) {
+export function TitlePage({ reading }: { reading: MemoirReading }) {
   const dates = lifespan(reading);
-  const first = reading.chapters[0];
 
   return (
-    <main className={styles.page}>
+    <section id="title" data-page="title" className={styles.page}>
       <section className="pt-12 text-center">
         <span
           aria-hidden
@@ -80,8 +56,8 @@ export function TitlePage({
           <ul className="mt-4 border-t border-border">
             {reading.chapters.map((chapter) => (
               <li key={chapter.id}>
-                <Link
-                  href={`${base}/${chapter.id}`}
+                <a
+                  href={`#${chapter.id}`}
                   className="flex items-baseline gap-4 border-b border-border py-4 transition-colors hover:text-seal"
                 >
                   <span className="w-8 shrink-0 font-sans text-[9.5px] font-medium tracking-[0.1em] text-ink-faint">
@@ -93,7 +69,7 @@ export function TitlePage({
                   <span className="shrink-0 font-sans text-[9.5px] font-medium tracking-[0.16em] text-ink-faint uppercase">
                     {chapterYears(chapter)}
                   </span>
-                </Link>
+                </a>
               </li>
             ))}
           </ul>
@@ -111,34 +87,14 @@ export function TitlePage({
           </p>
         </section>
       )}
-
-      <TurnNav
-        onward={
-          first
-            ? {
-                href: `${base}/${first.id}`,
-                eyebrow: `Chapter ${roman(first.ordinal + 1)}`,
-                title: first.title,
-              }
-            : { href: `${base}/people`, eyebrow: "Onward", title: "The people" }
-        }
-      />
-    </main>
+    </section>
   );
 }
 
 /** Back matter: everyone the memoir was assembled from. */
-export function PeoplePage({
-  base,
-  reading,
-}: {
-  base: string;
-  reading: MemoirReading;
-}) {
-  const last = reading.chapters[reading.chapters.length - 1];
-
+export function PeoplePage({ reading }: { reading: MemoirReading }) {
   return (
-    <main className={styles.page}>
+    <section id="people" data-page="people" className={styles.page}>
       <header className="mb-11 text-center">
         <p className="eyebrow flex justify-center gap-4">
           <span>The people</span>
@@ -174,35 +130,16 @@ export function PeoplePage({
           Nobody has sent a memory yet.
         </p>
       )}
-
-      <TurnNav
-        back={
-          last
-            ? { href: `${base}/${last.id}`, eyebrow: "Back", title: last.title }
-            : { href: base, eyebrow: "Back", title: "Title page" }
-        }
-        onward={{
-          href: `${base}/colophon`,
-          eyebrow: "Onward",
-          title: "Colophon",
-        }}
-      />
-    </main>
+    </section>
   );
 }
 
 /** Back matter: how the book was made, and whether it is sealed. */
-export function ColophonPage({
-  base,
-  reading,
-}: {
-  base: string;
-  reading: MemoirReading;
-}) {
+export function ColophonPage({ reading }: { reading: MemoirReading }) {
   const { totals } = reading;
 
   return (
-    <main className={styles.page}>
+    <section id="colophon" data-page="colophon" className={styles.page}>
       <header className="mb-11 text-center">
         <p className="eyebrow flex justify-center gap-4">
           <span>Colophon</span>
@@ -256,53 +193,6 @@ export function ColophonPage({
         </span>
       </div>
 
-      <TurnNav
-        back={{ href: `${base}/people`, eyebrow: "Back", title: "The people" }}
-      />
-    </main>
-  );
-}
-
-/** One end of the turn: where it goes, what to call it, and the label above. */
-export type Turn = { href: string; eyebrow: string; title: string };
-
-/**
- * The turn buttons at the foot of every page of the book.
- *
- * Exported because a chapter turns the same way the matter does — the book is
- * read in one direction and the sequence runs title page, chapters, the
- * people, the colophon. `ChapterReader` had its own copy of this markup until
- * the matter pages needed the same thing; two copies of "how a page turns" is
- * how one of them quietly stops matching the other.
- */
-export function TurnNav({ back, onward }: { back?: Turn; onward?: Turn }) {
-  if (!back && !onward) return null;
-
-  return (
-    <nav className="mt-16 flex justify-between gap-6 border-t border-border pt-5">
-      {back && (
-        <Link
-          href={back.href}
-          className="max-w-[46%] text-ink-faint transition-colors hover:text-foreground"
-        >
-          <span className="eyebrow-muted mb-1.5 block">{back.eyebrow}</span>
-          <span className="font-heading text-base leading-snug font-light">
-            {back.title}
-          </span>
-        </Link>
-      )}
-
-      {onward && (
-        <Link
-          href={onward.href}
-          className="ml-auto max-w-[46%] text-right text-ink-faint transition-colors hover:text-foreground"
-        >
-          <span className="eyebrow-muted mb-1.5 block">{onward.eyebrow}</span>
-          <span className="font-heading text-base leading-snug font-light">
-            {onward.title}
-          </span>
-        </Link>
-      )}
-    </nav>
+    </section>
   );
 }

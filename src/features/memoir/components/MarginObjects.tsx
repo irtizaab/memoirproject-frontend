@@ -2,7 +2,7 @@
 
 import styles from "@/features/memoir/reader.module.css";
 import type { Block, BlockSource } from "@/features/memoir/schemas";
-import { credit } from "@/features/memoir/utils";
+import { credit, footnotes } from "@/features/memoir/utils";
 import { cn } from "@/lib/utils";
 
 /**
@@ -60,9 +60,9 @@ export function MarginPlate({ block }: { block: Block }) {
  * Who this paragraph was assembled from.
  *
  * One compact line each, so a paragraph drawn from four people costs four
- * lines of margin rather than four cards. Hovering one underlines the exact
- * words it fathered in the prose — which is the whole argument for storing
- * offsets rather than a footnote number.
+ * lines of margin rather than four cards. Each carries the footnote numeral
+ * printed after its words in the prose; hovering one lifts the exact words it
+ * fathered. A source with no span is the whole passage, and says so.
  */
 export function SourceCredits({
   sources,
@@ -78,6 +78,7 @@ export function SourceCredits({
   if (sources.length === 0) return null;
 
   const diverging = sources.some((source) => source.diverges);
+  const notes = footnotes(sources);
 
   return (
     <div>
@@ -110,6 +111,11 @@ export function SourceCredits({
                     : "text-muted-foreground",
                 )}
               >
+                {notes.has(source.id) && (
+                  <sup className="mr-1 font-sans text-[9px] font-medium text-ink-faint">
+                    {notes.get(source.id)}
+                  </sup>
+                )}
                 {source.name}
               </span>
               <span
@@ -119,6 +125,7 @@ export function SourceCredits({
                 )}
               >
                 {credit(source)}
+                {!notes.has(source.id) && " · whole passage"}
                 {source.diverges && " · differs"}
               </span>
             </button>
@@ -156,14 +163,7 @@ function MarginHead({
   );
 }
 
-/**
- * A recording in the margin.
- *
- * The waveform is decorative — drawn in CSS rather than sampled from the audio,
- * because a real waveform would mean downloading every recording in a chapter
- * to draw a picture of it. What is true is beside it: whose voice, when, and
- * how long.
- */
+/** A recording in the margin: whose voice, when, how long. */
 export function VoiceCredit({ source }: { source: BlockSource }) {
   return (
     <div>

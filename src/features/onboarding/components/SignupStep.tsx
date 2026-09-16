@@ -162,7 +162,10 @@ export function SignupStep({
     it existed, a second run silently replaced the visible memoir and every
     memory in the first became unreachable.
   */
-  const alreadyHasMemoir = isApiError(claimError) && claimError.status === 409;
+  const alreadyHasMemoir =
+    isApiError(claimError) &&
+    claimError.status === 409 &&
+    !claimError.message.includes("email");
 
   const message = alreadyHasMemoir
     ? null

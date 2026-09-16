@@ -78,6 +78,17 @@ function linkHeaders(
 }
 
 /**
+ * The comment layer's credential: the link, or — with no link, the owner
+ * reading their own draft on `/preview` — their bearer token.
+ */
+async function commentHeaders(
+  token: string | null,
+  reader: string | null,
+): Promise<Record<string, string>> {
+  return token ? linkHeaders(token, reader) : authHeaders();
+}
+
+/**
  * The door: a passphrase and a name, for a session.
  *
  * The only call in this file that does not already need one. Everything it can
@@ -151,7 +162,7 @@ export async function getChapter(
  * commenting. Re-fetching the chapter would re-sign every photograph in it.
  */
 export async function listThreads(
-  token: string,
+  token: string | null,
   chapterId: string,
   reader: string | null,
   options: RequestOptions = {},
@@ -159,7 +170,7 @@ export async function listThreads(
   return apiRequest({
     path: ENDPOINTS.comments(chapterId),
     method: "GET",
-    headers: linkHeaders(token, reader),
+    headers: await commentHeaders(token, reader),
     schema: commentThreadSchema.array(),
     cache: "no-store",
     ...options,
@@ -176,7 +187,7 @@ export async function listThreads(
  * reflection in a memoir is signed rather than optionally signed.
  */
 export async function postComment(
-  token: string,
+  token: string | null,
   chapterId: string,
   reader: string | null,
   comment: CommentCreate,
@@ -188,7 +199,7 @@ export async function postComment(
     path: ENDPOINTS.comments(chapterId),
     method: "POST",
     body,
-    headers: linkHeaders(token, reader),
+    headers: await commentHeaders(token, reader),
     schema: commentReceiptSchema,
     ...options,
   });

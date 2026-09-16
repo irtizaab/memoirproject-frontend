@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Link2, Menu, MessageSquare, Search } from "lucide-react";
 
@@ -18,9 +18,12 @@ import { cn } from "@/lib/utils";
  * `/j/[token]` has its own: the person reading arrived by a link and has no
  * account. Signed-in navigation would be four dead ends.
  *
- * Children render their own `.page` column. That is deliberate — the column is
- * the offset parent the margin and comment lanes are measured against, so it
- * has to belong to whatever is doing the measuring.
+ * Children are the whole book — title page, every chapter, the people, the
+ * colophon — stacked down one scrolling page, each rendering its own `.page`
+ * column carrying `data-page`. The column is the offset parent the margin and
+ * comment lanes are measured against, so it has to belong to whatever is doing
+ * the measuring. Which part is under the reader is measured here and handed
+ * to the rail and the lifespan mark.
  *
  * ---------------------------------------------------------------------------
  * What the masthead says, and what it deliberately does not
@@ -33,15 +36,12 @@ import { cn } from "@/lib/utils";
 export function ReaderFrame({
   base,
   reading,
-  currentPage,
   draft = false,
   children,
 }: {
   /** The book's address without a page: `/m/{token}` or `/preview/{id}`. */
   base: string;
   reading: MemoirReading;
-  /** A chapter id, `"people"`, `"colophon"`, or null on the title page. */
-  currentPage: string | null;
   /**
    * The owner reading their own memoir before it is sealed. Says so, once,
    * where they cannot miss it: the alternative is somebody sharing a link to
@@ -60,6 +60,7 @@ export function ReaderFrame({
   /** Below 1000px the same rail is a sheet over the page instead. */
   const [open, setOpen] = useState(false);
   const [copyLabel, showCopyLabel] = useTransientLabel("Copy link");
+  const currentPage = useCurrentPage(reading);
 
   const dates = lifespan(reading);
   const current =
@@ -201,7 +202,6 @@ export function ReaderFrame({
 
       <div className={styles.frame}>
         <ContentsRail
-          base={base}
           reading={reading}
           currentPage={currentPage}
           collapsed={collapsed}
@@ -209,7 +209,7 @@ export function ReaderFrame({
           onExpand={() => setCollapsed(false)}
           onNavigate={() => setOpen(false)}
         />
-        {children}
+        <main>{children}</main>
       </div>
 
       <footer className="border-t border-border/70">
@@ -229,6 +229,57 @@ export function ReaderFrame({
       </footer>
     </div>
   );
+}
+
+/**
+ * Which part of the book is under the reader: the last `[data-page]` whose
+ * top has passed a line a third of the way down the viewport, or the final
+ * one once the page is scrolled to its end (the colophon is shorter than the
+ * distance to that line). Scroll-driven rather than an IntersectionObserver
+ * band, so a short part can still be current.
+ */
+function useCurrentPage(reading: MemoirReading): string {
+  const [current, setCurrent] = useState("title");
+  const raf = useRef(0);
+
+  useEffect(() => {
+    const measure = () => {
+      raf.current = 0;
+      const parts = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-page]"),
+      );
+      if (parts.length === 0) return;
+
+      const line = window.innerHeight / 3;
+      let found = parts[0].dataset.page ?? "title";
+      for (const part of parts) {
+        if (part.getBoundingClientRect().top <= line) {
+          found = part.dataset.page ?? found;
+        }
+      }
+      const atEnd =
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 2;
+      if (atEnd) found = parts[parts.length - 1].dataset.page ?? found;
+      setCurrent(found);
+    };
+
+    const onScroll = () => {
+      if (!raf.current) raf.current = window.requestAnimationFrame(measure);
+    };
+
+    measure();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf.current) window.cancelAnimationFrame(raf.current);
+    };
+    // Re-measure when the book's parts change — a renamed or dropped chapter.
+  }, [reading.chapters]);
+
+  return current;
 }
 
 /**
